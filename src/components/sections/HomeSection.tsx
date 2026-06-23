@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   BookOpen,
   ChevronRight,
@@ -14,6 +14,7 @@ import {
   Megaphone,
   Search,
   Sparkles,
+  X,
   Zap,
   type LucideIcon,
 } from "lucide-react";
@@ -53,13 +54,48 @@ export function HomeSection({
   onNavigate: (section: SectionId) => void;
   onCreateNote: () => void;
 }) {
-  const [showDownloadsMessage, setShowDownloadsMessage] = useState(false);
+  const [toast, setToast] = useState<{
+    title: string;
+    message: string;
+    showGeneratorAction?: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+
+    const timeoutId = window.setTimeout(() => setToast(null), 6500);
+    return () => window.clearTimeout(timeoutId);
+  }, [toast]);
+
+  const showDownloadsToast = () =>
+    setToast({
+      title: "Descargas",
+      message:
+        "Las descargas se generan desde el Generador IA. Ingresá al generador, redactá un borrador y descargalo en Word.",
+      showGeneratorAction: true,
+    });
+
+  const handleFeatureAction = (number: number) => {
+    if (number === 1) onNavigate("biblioteca");
+    if (number === 2) onNavigate("modelos");
+    if (number === 3) onCreateNote();
+    if (number === 4) showDownloadsToast();
+    if (number === 5) onNavigate("ayuda");
+    if (number === 6) {
+      setToast({
+        title: "Borradores generados",
+        message:
+          "El historial de borradores se incorporará en una próxima versión. Por ahora, descargá cada borrador en Word para conservarlo.",
+        showGeneratorAction: true,
+      });
+    }
+  };
 
   const handleQuickLink = (title: string) => {
     if (title === "Redactar nueva nota") onCreateNote();
     if (title === "Buscar modelos") onNavigate("modelos");
     if (title === "Ver manual completo") onNavigate("biblioteca");
-    if (title === "Mis descargas") setShowDownloadsMessage(true);
+    if (title === "Mis descargas") showDownloadsToast();
   };
 
   return (
@@ -112,7 +148,17 @@ export function HomeSection({
           return (
             <Card
               key={feature.number}
-              className="group relative flex h-full min-h-[238px] flex-col overflow-hidden border-[#d2dfec] bg-[linear-gradient(145deg,#ffffff_0%,#ffffff_58%,#f7fbff_100%)] p-6 transition-all duration-300 before:absolute before:inset-x-0 before:top-0 before:h-[3px] before:bg-gradient-to-r before:from-[#1680dd] before:via-[#70afe8] before:to-transparent hover:-translate-y-1 hover:border-[#a9c8e8] hover:shadow-[0_18px_40px_rgba(30,75,130,0.105)]"
+              role="button"
+              tabIndex={0}
+              aria-label={`${feature.action}: ${feature.title}`}
+              onClick={() => handleFeatureAction(feature.number)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  handleFeatureAction(feature.number);
+                }
+              }}
+              className="group relative flex h-full min-h-[238px] cursor-pointer flex-col overflow-hidden border-[#d2dfec] bg-[linear-gradient(145deg,#ffffff_0%,#ffffff_58%,#f7fbff_100%)] p-6 transition-all duration-300 before:absolute before:inset-x-0 before:top-0 before:h-[3px] before:bg-gradient-to-r before:from-[#1680dd] before:via-[#70afe8] before:to-transparent hover:-translate-y-1 hover:border-[#a9c8e8] hover:shadow-[0_18px_40px_rgba(30,75,130,0.105)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1680dd] focus-visible:ring-offset-2"
             >
               <div className="pointer-events-none absolute -bottom-11 -right-9 size-32 rounded-full border border-[#7bb1e7]/10 bg-[#eaf4ff]/55 transition-transform duration-300 group-hover:scale-110" />
               <div className="pointer-events-none absolute bottom-5 right-5 grid grid-cols-2 gap-1.5 opacity-0 transition-opacity group-hover:opacity-30">
@@ -146,9 +192,9 @@ export function HomeSection({
               </div>
 
               <div className="relative mt-auto flex items-center justify-between border-t border-[#e5edf5] pt-4">
-                <Button className="h-9 rounded-xl bg-white/90 px-4 shadow-[0_4px_12px_rgba(31,75,125,0.045)]">
+                <span className="inline-flex h-9 items-center justify-center rounded-xl border border-[#c8d9eb] bg-white/90 px-4 text-[11px] font-semibold text-[#075cc5] shadow-[0_4px_12px_rgba(31,75,125,0.045)] transition-colors group-hover:border-[#9fc1e4] group-hover:bg-[#f8fbff]">
                   {feature.action}
-                </Button>
+                </span>
                 <span className="flex size-8 items-center justify-center rounded-full bg-[#edf5ff] text-[#0861c8] transition-all group-hover:translate-x-1 group-hover:bg-[#0861c8] group-hover:text-white">
                   <ChevronRight size={17} />
                 </span>
@@ -248,39 +294,46 @@ export function HomeSection({
         </Card>
       </section>
 
-      {showDownloadsMessage && (
+      {toast && (
         <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="downloads-message-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[#071a35]/45 p-4 backdrop-blur-[2px]"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              setShowDownloadsMessage(false);
-            }
-          }}
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-5 right-5 z-50 w-[calc(100%-2.5rem)] max-w-sm"
         >
-          <Card className="decorated-panel w-full max-w-md p-6 text-center shadow-[0_24px_70px_rgba(5,30,65,0.24)]">
-            <span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-[#eaf4ff] text-[#0863c8]">
+          <Card className="decorated-panel border-[#bcd4eb] p-4 shadow-[0_18px_50px_rgba(12,48,91,0.2)]">
+            <div className="flex items-start gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#eaf4ff] text-[#0863c8]">
               <Download size={23} />
-            </span>
-            <h3
-              id="downloads-message-title"
-              className="mt-4 text-base font-bold text-[#173055]"
-            >
-              Mis descargas
-            </h3>
-            <p className="mt-2 text-sm leading-6 text-[#607491]">
-              Esta función se habilitará cuando incorporemos el historial de
-              descargas.
-            </p>
-            <Button
-              variant="primary"
-              className="mt-5 h-10 px-6"
-              onClick={() => setShowDownloadsMessage(false)}
-            >
-              Entendido
-            </Button>
+              </span>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-sm font-bold text-[#173055]">
+                  {toast.title}
+                </h3>
+                <p className="mt-1 text-[11px] leading-5 text-[#607491]">
+                  {toast.message}
+                </p>
+                {toast.showGeneratorAction && (
+                  <Button
+                    variant="primary"
+                    className="mt-3 h-8 px-4 text-[10px]"
+                    onClick={() => {
+                      setToast(null);
+                      onCreateNote();
+                    }}
+                  >
+                    Ir al Generador IA
+                  </Button>
+                )}
+              </div>
+              <button
+                type="button"
+                aria-label="Cerrar aviso"
+                onClick={() => setToast(null)}
+                className="flex size-7 shrink-0 items-center justify-center rounded-lg text-[#607491] transition-colors hover:bg-[#edf5ff] hover:text-[#075cc5]"
+              >
+                <X size={15} />
+              </button>
+            </div>
           </Card>
         </div>
       )}

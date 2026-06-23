@@ -10,7 +10,20 @@ type GenerateDocumentRequest = {
   technicalPrompt?: string;
 };
 
-const STRICT_INSTRUCTIONS = `Sos un asistente especializado en redacción administrativa municipal de la Municipalidad de Salta. Redactá únicamente el documento solicitado, sin explicaciones externas. Usá lenguaje administrativo formal, claro, preciso y conciso. Respetá el tipo de documento, el modelo seleccionado y los datos completados por el agente. No inventes expedientes, fechas, normas, artículos, nombres, cargos ni destinatarios. Si falta un dato, dejalo entre corchetes. No uses nombres propios ficticios. No uses Markdown. No agregues frases como “aquí tiene” o “claro”. El resultado debe quedar listo para vista previa y exportación a Word.`;
+const STRICT_INSTRUCTIONS = `Redactá únicamente el documento administrativo solicitado para la Municipalidad de Salta. Usá lenguaje formal, claro, preciso y conciso. Respetá el tipo, el modelo y los datos suministrados. No inventes expedientes, fechas, normas, artículos, nombres, cargos ni destinatarios; si falta información, dejala entre corchetes. No uses Markdown, nombres ficticios, explicaciones externas ni frases como "claro" o "aquí tiene". Entregá texto listo para revisar y exportar a Word.`;
+
+const MODELS = ["gemini-2.5-flash-lite", "gemini-2.5-flash"] as const;
+
+const getSafeErrorMessage = (error: unknown) => {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message
+      .replace(/AIza[\w-]+/g, "[API_KEY]")
+      .replace(/([?&]key=)[^&\s]+/gi, "$1[API_KEY]")
+      .slice(0, 350);
+  }
+
+  return "Gemini rechazó la solicitud. Revisá la API Key o el modelo configurado.";
+};
 
 export async function POST(request: Request) {
   let body: GenerateDocumentRequest;
@@ -19,7 +32,7 @@ export async function POST(request: Request) {
     body = (await request.json()) as GenerateDocumentRequest;
   } catch {
     return Response.json(
-      { error: "La solicitud enviada no es válida." },
+      { success: false, error: "La solicitud enviada no es válida." },
       { status: 400 },
     );
   }
@@ -27,6 +40,7 @@ export async function POST(request: Request) {
   if (!body.userPrompt?.trim()) {
     return Response.json(
       {
+        success: false,
         error:
           "Escribí primero las indicaciones para generar el borrador.",
       },
@@ -34,11 +48,13 @@ export async function POST(request: Request) {
     );
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey =
+    process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
   if (!apiKey) {
     return Response.json(
       {
+        success: false,
         error:
           "No se encontró la API Key de Gemini. Revisá el archivo .env.local.",
       },
@@ -50,38 +66,67 @@ export async function POST(request: Request) {
 
   if (!technicalPrompt) {
     return Response.json(
-      { error: "No se pudo construir el prompt técnico del documento." },
+      {
+        success: false,
+        error: "No se pudo construir el prompt técnico del documento.",
+      },
       { status: 400 },
     );
   }
 
+  console.log("Generando documento:", body.documentType);
+  console.log("Prompt length:", technicalPrompt?.length || 0);
+  console.log("Gemini key presente:", Boolean(apiKey));
+
   try {
     const ai = new GoogleGenAI({ apiKey });
-    const interaction = await ai.interactions.create({
-      model: "gemini-3.5-flash",
-      input: `${STRICT_INSTRUCTIONS}
+    const prompt = `${STRICT_INSTRUCTIONS}
 
-INSTRUCCIONES Y DATOS DEL DOCUMENTO:
-${technicalPrompt}`,
-    });
-    const generatedText = interaction.output_text?.trim() ?? "";
+DATOS E INDICACIONES:
+${technicalPrompt}`;
+    let generatedText = "";
+    let lastError: unknown;
+
+    for (const model of MODELS) {
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          contents: prompt,
+          config: {
+            maxOutputTokens: 1200,
+            temperature: 0.2,
+            topP: 0.8,
+            thinkingConfig: {
+              thinkingBudget: 0,
+            },
+          },
+        });
+        generatedText = response.text?.trim() ?? "";
+        if (generatedText) break;
+      } catch (error) {
+        lastError = error;
+      }
+    }
 
     if (!generatedText) {
       return Response.json(
         {
+          success: false,
           error:
-            "La IA no devolvió contenido. Intentá nuevamente con indicaciones más claras.",
+            lastError
+              ? getSafeErrorMessage(lastError)
+              : "La IA no devolvió contenido. Intentá nuevamente con indicaciones más claras.",
         },
         { status: 502 },
       );
     }
 
-    return Response.json({ generatedText });
-  } catch {
+    return Response.json({ success: true, generatedText });
+  } catch (error) {
     return Response.json(
       {
-        error:
-          "No se pudo generar el documento. Revisá la conexión o la configuración de Gemini.",
+        success: false,
+        error: getSafeErrorMessage(error),
       },
       { status: 502 },
     );

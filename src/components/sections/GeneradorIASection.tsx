@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AlignCenter,
   AlignJustify,
@@ -16,6 +16,7 @@ import {
   Info,
   Lightbulb,
   List,
+  LoaderCircle,
   MessageCircleQuestion,
   Send,
   Sparkles,
@@ -179,7 +180,15 @@ export function GeneradorIASection({
   const [generatedDocumentText, setGeneratedDocumentText] = useState("");
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [aiError, setAiError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [showTechnicalPrompt, setShowTechnicalPrompt] = useState(false);
+
+  useEffect(() => {
+    if (!successMessage) return;
+
+    const timeoutId = window.setTimeout(() => setSuccessMessage(""), 4500);
+    return () => window.clearTimeout(timeoutId);
+  }, [successMessage]);
 
   const modelsForType = useMemo(
     () => documentModels.filter((model) => model.type === selectedType),
@@ -225,6 +234,7 @@ export function GeneradorIASection({
     setUserPrompt("");
     setGeneratedDocumentText("");
     setAiError("");
+    setSuccessMessage("");
   };
 
   const handleTypeChange = (type: DocumentType) => {
@@ -241,12 +251,14 @@ export function GeneradorIASection({
     setFormData(data);
     setGeneratedDocumentText("");
     setAiError("");
+    setSuccessMessage("");
   };
 
   const handleUserPromptChange = (prompt: string) => {
     setUserPrompt(prompt);
     setGeneratedDocumentText("");
     setAiError("");
+    setSuccessMessage("");
   };
 
   const handleQuickExample = (example: QuickExample) => {
@@ -266,6 +278,7 @@ export function GeneradorIASection({
     setUserPrompt(example.prompt);
     setGeneratedDocumentText("");
     setAiError("");
+    setSuccessMessage("");
   };
 
   const handleGenerateDraft = async () => {
@@ -273,11 +286,15 @@ export function GeneradorIASection({
       setAiError(
         "Escribí primero las indicaciones para generar el borrador.",
       );
+      setSuccessMessage("");
       return;
     }
 
     setIsGeneratingAI(true);
     setAiError("");
+    setSuccessMessage("");
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 60_000);
 
     try {
       const response = await fetch("/api/generate-document", {
@@ -292,33 +309,42 @@ export function GeneradorIASection({
           userPrompt,
           technicalPrompt,
         }),
+        signal: controller.signal,
       });
       const result = (await response.json()) as {
+        success?: boolean;
         generatedText?: string;
         error?: string;
       };
 
-      if (!response.ok) {
-        setAiError(
-          result.error ||
-            "No se pudo generar el documento. Revisá la conexión o la configuración de Gemini.",
+      if (!response.ok || !result.success) {
+        throw new Error(
+          result.error || "No se pudo generar el documento.",
         );
-        return;
       }
 
       if (!result.generatedText?.trim()) {
-        setAiError(
+        throw new Error(
           "La IA no devolvió contenido. Intentá nuevamente con indicaciones más claras.",
         );
-        return;
       }
 
       setGeneratedDocumentText(result.generatedText.trim());
-    } catch {
-      setAiError(
-        "No se pudo generar el documento. Revisá la conexión o la configuración de Gemini.",
-      );
+      setSuccessMessage("Borrador generado correctamente.");
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        setAiError(
+          "La generación demoró más de lo esperado. Intentá nuevamente con indicaciones más breves.",
+        );
+      } else {
+        setAiError(
+          error instanceof Error && error.message
+            ? error.message
+            : "No se pudo generar el documento. Revisá la conexión o la configuración de Gemini.",
+        );
+      }
     } finally {
+      window.clearTimeout(timeoutId);
       setIsGeneratingAI(false);
     }
   };
@@ -391,6 +417,7 @@ export function GeneradorIASection({
           generatedDocumentText={generatedDocumentText}
           isGeneratingAI={isGeneratingAI}
           aiError={aiError}
+          successMessage={successMessage}
           onGenerateAI={handleGenerateDraft}
           onShowTechnicalPrompt={() => setShowTechnicalPrompt(true)}
         />
@@ -675,6 +702,7 @@ function DocumentPreview({
   generatedDocumentText,
   isGeneratingAI,
   aiError,
+  successMessage,
   onGenerateAI,
   onShowTechnicalPrompt,
 }: {
@@ -683,6 +711,7 @@ function DocumentPreview({
   generatedDocumentText: string;
   isGeneratingAI: boolean;
   aiError: string;
+  successMessage: string;
   onGenerateAI: () => Promise<void>;
   onShowTechnicalPrompt: () => void;
 }) {
@@ -743,14 +772,30 @@ function DocumentPreview({
         </Button>
       </div>
 
-      <div className="rounded-2xl border border-[#d8e3ed] bg-[#edf2f7]/70 p-3 shadow-[inset_0_1px_3px_rgba(28,61,99,0.035)]">
+      <div className="relative rounded-2xl border border-[#d8e3ed] bg-[#edf2f7]/70 p-3 shadow-[inset_0_1px_3px_rgba(28,61,99,0.035)]">
         <FormatToolbar />
         <WordSheet model={model} finalDocument={displayedDocument} />
+        {isGeneratingAI && (
+          <div className="absolute inset-3 z-10 flex items-center justify-center rounded-xl bg-[#eef5fc]/88 p-6 text-center backdrop-blur-[2px]">
+            <div className="max-w-[310px] rounded-2xl border border-[#bdd5ec] bg-white/95 px-6 py-5 shadow-[0_16px_38px_rgba(27,69,116,0.14)]">
+              <LoaderCircle
+                className="mx-auto animate-spin text-[#0864ca]"
+                size={26}
+              />
+              <p className="mt-3 text-xs font-bold text-[#173055]">
+                Generando borrador administrativo...
+              </p>
+              <p className="mt-1.5 text-[10px] leading-4 text-[#607491]">
+                Estamos redactando el documento con los datos cargados.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
-      {generatedDocumentText && (
+      {successMessage && (
         <div className="mt-3 rounded-lg border border-[#bfe2ce] bg-[#effaf3] px-3 py-2 text-[10px] font-semibold text-[#16844a]">
-          Borrador generado con IA. Podés revisarlo, copiarlo o descargarlo.
+          {successMessage}
         </div>
       )}
 
@@ -770,7 +815,11 @@ function DocumentPreview({
           onClick={onGenerateAI}
           disabled={isGeneratingAI}
         >
-          <Sparkles size={16} />
+          {isGeneratingAI ? (
+            <LoaderCircle size={16} className="animate-spin" />
+          ) : (
+            <Sparkles size={16} />
+          )}
           {isGeneratingAI ? "Generando borrador..." : "Generar borrador"}
         </Button>
         <Button
@@ -789,6 +838,15 @@ function DocumentPreview({
           Copiar texto
         </Button>
       </div>
+
+      {isGeneratingAI && (
+        <p
+          role="status"
+          className="mt-2 text-center text-[10px] font-medium text-[#607491]"
+        >
+          Esto puede tardar unos segundos. No cierres esta ventana.
+        </p>
+      )}
 
       <div className="mt-4 flex gap-3 rounded-lg border border-[#d4e1ef] bg-[#f8fbff] p-3">
         <Lightbulb className="shrink-0 text-[#dcaa22]" size={17} />
