@@ -1,26 +1,185 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f4f8fc;
+  --foreground: #10254b;
+  --line: rgba(73, 114, 164, 0.13);
+  --blue-soft: rgba(22, 111, 207, 0.08);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--background);
 }
 
 body {
-  background: var(--background);
+  margin: 0;
+  background:
+    radial-gradient(circle at 28% -8%, rgba(203, 226, 255, 0.7), transparent 30rem),
+    radial-gradient(circle at 92% 18%, rgba(222, 238, 255, 0.55), transparent 24rem),
+    linear-gradient(rgba(43, 102, 169, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(43, 102, 169, 0.018) 1px, transparent 1px),
+    var(--background);
+  background-size: auto, auto, 36px 36px, 36px 36px, auto;
+  background-attachment: fixed;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), Arial, Helvetica, sans-serif;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  color: #ffffff;
+  background: #1261c9;
+}
+
+.app-shell {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+}
+
+.app-shell::before,
+.app-shell::after {
+  position: fixed;
+  z-index: -1;
+  border-radius: 999px;
+  content: "";
+  pointer-events: none;
+  filter: blur(2px);
+}
+
+.app-shell::before {
+  top: 7rem;
+  right: -10rem;
+  width: 25rem;
+  height: 25rem;
+  background: radial-gradient(circle, rgba(65, 145, 226, 0.08), transparent 68%);
+}
+
+.app-shell::after {
+  bottom: -12rem;
+  left: 11rem;
+  width: 30rem;
+  height: 30rem;
+  background: radial-gradient(circle, rgba(104, 150, 207, 0.07), transparent 70%);
+}
+
+.app-main {
+  position: relative;
+}
+
+.app-main::before {
+  position: absolute;
+  top: 1.3rem;
+  right: 2rem;
+  width: 92px;
+  height: 48px;
+  opacity: 0.32;
+  content: "";
+  pointer-events: none;
+  background-image: radial-gradient(circle, rgba(29, 102, 180, 0.34) 1px, transparent 1.5px);
+  background-size: 12px 12px;
+  mask-image: linear-gradient(to left, black, transparent);
+}
+
+.section-stage {
+  position: relative;
+  isolation: isolate;
+}
+
+.section-stage::before {
+  position: absolute;
+  z-index: -1;
+  top: -1rem;
+  right: -1rem;
+  width: 15rem;
+  height: 15rem;
+  border-radius: 999px;
+  content: "";
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(18, 104, 198, 0.055), transparent 70%);
+}
+
+.surface-card {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.99), rgba(251, 253, 255, 0.97));
+  box-shadow:
+    0 1px 2px rgba(23, 58, 99, 0.035),
+    0 10px 28px rgba(28, 69, 117, 0.035);
+}
+
+.decorated-panel {
+  position: relative;
+  overflow: hidden;
+}
+
+.decorated-panel::after {
+  position: absolute;
+  top: -4rem;
+  right: -4rem;
+  width: 10rem;
+  height: 10rem;
+  border: 1px solid rgba(35, 116, 203, 0.09);
+  border-radius: 999px;
+  content: "";
+  pointer-events: none;
+  box-shadow:
+    0 0 0 18px rgba(35, 116, 203, 0.025),
+    0 0 0 38px rgba(35, 116, 203, 0.018);
+}
+
+.editorial-panel {
+  background:
+    linear-gradient(90deg, rgba(28, 109, 197, 0.035) 1px, transparent 1px),
+    #ffffff;
+  background-size: 100% 100%;
+}
+
+.document-paper {
+  background:
+    linear-gradient(90deg, rgba(38, 83, 137, 0.025) 1px, transparent 1px),
+    #ffffff;
+}
+
+@media print {
+  body {
+    background: #ffffff;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .munidoc-word-sheet,
+  .munidoc-word-sheet * {
+    visibility: visible;
+  }
+
+  .munidoc-word-sheet {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 100vh !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
 }
