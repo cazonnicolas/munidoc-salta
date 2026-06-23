@@ -9,7 +9,6 @@ import {
   FileStack,
   HelpCircle,
   History,
-  Landmark,
   LockKeyhole,
   Megaphone,
   Search,
@@ -104,11 +103,6 @@ export function HomeSection({
         <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-[#1883e2] via-[#0864c9] to-[#65adeb]" />
         <div className="absolute -bottom-20 right-44 size-52 rounded-full border border-[#5d9fde]/10" />
         <div className="absolute -bottom-12 right-52 size-36 rounded-full border border-[#5d9fde]/10" />
-        <div className="absolute right-[33%] top-7 hidden grid-cols-4 gap-2 opacity-35 md:grid">
-          {Array.from({ length: 12 }).map((_, index) => (
-            <span key={index} className="size-1 rounded-full bg-[#3c86d0]" />
-          ))}
-        </div>
         <div className="relative z-10 max-w-[560px]">
           <h2 className="text-[22px] font-bold tracking-[-0.02em] text-[#10264c]">
             Bienvenido Agente Municipal <span aria-hidden>👋</span>
@@ -129,11 +123,6 @@ export function HomeSection({
           </div>
         </div>
 
-        <Landmark
-          className="absolute -bottom-10 right-[170px] hidden text-[#69a5ea] opacity-28 md:block"
-          size={330}
-          strokeWidth={0.75}
-        />
         <div className="absolute right-8 top-1/2 hidden -translate-y-1/2 items-center rounded-2xl border border-white/70 bg-white/45 px-5 py-4 shadow-[0_8px_24px_rgba(35,83,135,0.055)] backdrop-blur-sm xl:flex">
           <InstitutionalLogo className="w-[160px]" />
         </div>
