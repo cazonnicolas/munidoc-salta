@@ -67,7 +67,7 @@ export async function exportAdministrativeDocumentToWord({
             spacing: { after: 120 },
             children: [
               new TextRun({
-                text: `${documentType.toUpperCase()} · ${documentTitle}`,
+                text: `${documentType.toUpperCase()} - ${documentTitle}`,
                 bold: true,
                 font: FONT_FAMILY,
                 size: FONT_SIZE,
@@ -128,17 +128,6 @@ function createFooter() {
             font: FONT_FAMILY,
             size: 17,
             color: "7890A9",
-          }),
-        ],
-      }),
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        children: [
-          new TextRun({
-            text: "Documento generado desde MuniDoc Salta",
-            font: FONT_FAMILY,
-            size: 16,
-            color: "8A9DB1",
           }),
         ],
       }),

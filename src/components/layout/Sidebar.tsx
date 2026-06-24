@@ -1,4 +1,4 @@
-import Image from "next/image";
+﻿import Image from "next/image";
 import {
   BookOpen,
   CircleHelp,
@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import type { SectionId } from "@/lib/navigation";
 import { InstitutionalLogo } from "@/components/ui/InstitutionalLogo";
+import { APP_INFO } from "@/lib/appInfo";
 
 const menuItems = [
   { id: "inicio", label: "Inicio", icon: Home },
@@ -127,6 +128,9 @@ export function Sidebar({
           © 2026 Municipalidad de Salta.
           <br />
           Todos los derechos reservados.
+        </p>
+        <p className="mt-1 px-2 text-center text-[8px] leading-3 text-[#8a9bb1]">
+          {APP_INFO.version} · Lanzamiento 23/06/2026
         </p>
       </div>
     </aside>

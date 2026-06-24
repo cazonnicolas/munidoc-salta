@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -6,6 +6,7 @@ import {
   BarChart3,
   Clock3,
   Download,
+  FileDown,
   FileText,
   LogOut,
   Monitor,
@@ -18,10 +19,13 @@ import {
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { trackActivity } from "@/lib/activityClient";
 
 type ActivityMetricsResponse = {
   success: boolean;
   error?: string;
+  dataSource?: "real" | "demo";
+  lastUpdatedAt?: string;
   metrics?: {
     visitsToday: number;
     sessionsWeek: number;
@@ -59,12 +63,22 @@ const eventLabels: Record<string, string> = {
   admin_login_success: "Acceso privado correcto",
   admin_login_error: "Intento fallido de acceso privado",
   manual_chapter_view: "Visualizó capítulo del manual",
+  activity_report_export: "Exportó reporte de actividad",
+  view_about_munidoc: "Visualizó información institucional",
+  copy_app_link: "Copió enlace de MuniDoc",
+  help_about_click: "Consultó acerca de MuniDoc",
+  generator_responsibility_notice_view: "Visualizó aviso de responsabilidad",
+  quick_guide_view: "Visualizó guía rápida",
+  good_practices_view: "Visualizó buenas prácticas",
+  checklist_view: "Visualizó checklist del generador",
+  generator_draft_success: "Generó borrador con IA",
 };
 
 export function ActivityPanelSection({ onLoggedOut }: { onLoggedOut: () => void }) {
   const [data, setData] = useState<ActivityMetricsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [actionMessage, setActionMessage] = useState("");
 
   const loadActivity = async () => {
     setIsLoading(true);
@@ -75,13 +89,13 @@ export function ActivityPanelSection({ onLoggedOut }: { onLoggedOut: () => void 
       const result = (await response.json()) as ActivityMetricsResponse;
 
       if (!response.ok || !result.success) {
-        setError(result.error || "No se pudieron cargar las métricas.");
+        setError("No se pudo conectar con la actividad en este momento. Intentá nuevamente.");
         return;
       }
 
       setData(result);
     } catch {
-      setError("No se pudieron cargar las métricas.");
+      setError("No se pudo conectar con la actividad en este momento. Intentá nuevamente.");
     } finally {
       setIsLoading(false);
     }
@@ -95,12 +109,53 @@ export function ActivityPanelSection({ onLoggedOut }: { onLoggedOut: () => void 
     return () => window.clearTimeout(timeoutId);
   }, []);
 
+  useEffect(() => {
+    if (!actionMessage) return;
+
+    const timeoutId = window.setTimeout(() => setActionMessage(""), 3800);
+    return () => window.clearTimeout(timeoutId);
+  }, [actionMessage]);
+
   const handleLogout = async () => {
     await fetch("/api/admin/logout", { method: "POST" });
     onLoggedOut();
   };
 
+  const handleExportReport = () => {
+    if (!data?.metrics) return;
+
+    const csv = buildActivityReportCsv(data);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "reporte-actividad-munidoc.csv";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+
+    trackActivity({
+      eventType: "activity_report_export",
+      section: "Panel de actividad",
+      detail: "Exportar reporte",
+    });
+    setActionMessage("Reporte de actividad exportado correctamente.");
+  };
+
   const metrics = data?.metrics;
+  const dataSourceLabel =
+    data?.dataSource === "real" ? "Datos reales conectados" : "Modo demo";
+  const lastUpdatedAt = data?.lastUpdatedAt
+    ? new Date(data.lastUpdatedAt).toLocaleString("es-AR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "Sin actualizar";
+  const executiveSummary = buildExecutiveSummary(data);
 
   return (
     <section className="section-stage space-y-6">
@@ -115,9 +170,15 @@ export function ActivityPanelSection({ onLoggedOut }: { onLoggedOut: () => void 
                 Panel de actividad
               </h1>
               <Badge>Acceso privado</Badge>
+              <Badge tone={data?.dataSource === "real" ? "green" : "orange"}>
+                {dataSourceLabel}
+              </Badge>
             </div>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[#536b89]">
               Monitoreo interno de uso de la plataforma.
+            </p>
+            <p className="mt-1 text-[11px] font-medium text-[#6a7e9c]">
+              Última actualización: {lastUpdatedAt}
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               {["Hoy", "7 días", "30 días"].map((filter, index) => (
@@ -141,6 +202,10 @@ export function ActivityPanelSection({ onLoggedOut }: { onLoggedOut: () => void 
             <LogOut size={14} />
             Cerrar sesión
           </Button>
+          <Button onClick={handleExportReport} disabled={!data?.metrics}>
+            <FileDown size={14} />
+            Exportar reporte
+          </Button>
           <Button variant="primary" onClick={loadActivity} disabled={isLoading}>
             <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
             Actualizar datos
@@ -153,6 +218,31 @@ export function ActivityPanelSection({ onLoggedOut }: { onLoggedOut: () => void 
           {error}
         </Card>
       )}
+
+      {actionMessage && (
+        <Card className="border-[#bfe2ce] bg-[#effaf3] p-4 text-sm font-semibold text-[#16844a]">
+          {actionMessage}
+        </Card>
+      )}
+
+      <Card className="decorated-panel border-[#c7dcf0] bg-[linear-gradient(135deg,#ffffff,#f4f9ff)] p-5">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-start gap-4">
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-[#eaf4ff] text-[#075cc5] ring-1 ring-[#c4dcf6]">
+              <BarChart3 size={22} />
+            </span>
+            <div>
+              <h2 className="text-base font-bold text-[#18355f]">Resumen ejecutivo</h2>
+              <p className="mt-2 max-w-4xl text-sm leading-6 text-[#536b89]">
+                {executiveSummary}
+              </p>
+            </div>
+          </div>
+          <Badge tone={data?.dataSource === "real" ? "green" : "orange"}>
+            {dataSourceLabel}
+          </Badge>
+        </div>
+      </Card>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <KpiCard title="Visitas hoy" value={metrics?.visitsToday ?? 0} icon={Activity} tone="blue" />
@@ -178,6 +268,83 @@ export function ActivityPanelSection({ onLoggedOut }: { onLoggedOut: () => void 
       <RecentEvents events={data?.recentEvents ?? []} isLoading={isLoading} />
     </section>
   );
+}
+
+function buildExecutiveSummary(data: ActivityMetricsResponse | null) {
+  if (!data?.metrics) {
+    return "Todavía no hay actividad suficiente para generar un resumen confiable. Los datos comenzarán a visualizarse a medida que se utilice la plataforma.";
+  }
+
+  if (data.dataSource !== "real") {
+    return "El panel está funcionando en modo demo porque todavía no hay actividad real suficiente o no se pudo consultar la base de datos. Cuando se registren eventos reales, el resumen se actualizará automáticamente.";
+  }
+
+  const sectionsCount = data.sections?.reduce((total, item) => total + item.count, 0) ?? 0;
+  const devicesCount = data.devices?.reduce((total, item) => total + item.count, 0) ?? 0;
+  const hasRealMovement =
+    data.metrics.visitsToday > 0 ||
+    data.metrics.generatedDrafts > 0 ||
+    data.metrics.wordDownloads > 0 ||
+    sectionsCount > 0 ||
+    devicesCount > 0;
+
+  if (!hasRealMovement) {
+    return "Todavía no se registró actividad suficiente. Los datos comenzarán a visualizarse a medida que se utilice la plataforma.";
+  }
+
+  const parts = [
+    `La sección con mayor movimiento es ${data.metrics.mostVisitedSection}.`,
+    `Durante la semana se registraron ${data.metrics.sessionsWeek} sesiones y ${data.metrics.generatedDrafts} borradores generados con IA.`,
+    `El dispositivo más utilizado es ${data.metrics.mostUsedDevice}.`,
+  ];
+
+  if (data.metrics.wordDownloads > 0) {
+    parts.push(`También se registraron ${data.metrics.wordDownloads} descargas de documentos Word.`);
+  }
+
+  return parts.join(" ");
+}
+
+function buildActivityReportCsv(data: ActivityMetricsResponse) {
+  const rows: string[][] = [
+    ["Reporte de actividad MuniDoc Salta"],
+    ["Fecha de exportación", new Date().toLocaleString("es-AR")],
+    ["Estado de datos", data.dataSource === "real" ? "Datos reales conectados" : "Modo demo"],
+    ["Última actualización", data.lastUpdatedAt ?? ""],
+    [],
+    ["KPIs"],
+    ["Visitas hoy", String(data.metrics?.visitsToday ?? 0)],
+    ["Sesiones esta semana", String(data.metrics?.sessionsWeek ?? 0)],
+    ["Borradores IA generados", String(data.metrics?.generatedDrafts ?? 0)],
+    ["Descargas Word", String(data.metrics?.wordDownloads ?? 0)],
+    ["Apartado más visitado", data.metrics?.mostVisitedSection ?? "Sin datos"],
+    ["Hora pico", data.metrics?.peakHour ?? "Sin datos"],
+    ["Dispositivo más usado", data.metrics?.mostUsedDevice ?? "Sin datos"],
+    [],
+    ["Secciones más visitadas"],
+    ["Sección", "Cantidad"],
+    ...(data.sections ?? []).map((item) => [item.section, String(item.count)]),
+    [],
+    ["Dispositivos"],
+    ["Dispositivo", "Cantidad"],
+    ...(data.devices ?? []).map((item) => [item.device, String(item.count)]),
+    [],
+    ["Actividad reciente"],
+    ["Fecha y hora", "Acción", "Apartado", "Detalle", "Dispositivo"],
+    ...(data.recentEvents ?? []).map((event) => [
+      new Date(event.createdAt).toLocaleString("es-AR"),
+      eventLabels[event.eventType] ?? event.eventType,
+      event.section,
+      event.detail,
+      event.device,
+    ]),
+  ];
+
+  return rows.map((row) => row.map(escapeCsvCell).join(",")).join("\n");
+}
+
+function escapeCsvCell(value: string) {
+  return `"${value.replaceAll('"', '""')}"`;
 }
 
 function KpiCard({

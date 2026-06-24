@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -10,6 +10,7 @@ import {
   Check,
   ChevronDown,
   Clipboard,
+  ClipboardCheck,
   Code2,
   Download,
   FileText,
@@ -49,6 +50,13 @@ const documentTypes: DocumentType[] = [
   "Circular",
   "Informe",
   "Constancia",
+];
+
+const generationMessages = [
+  "Preparando borrador administrativo...",
+  "Aplicando estructura del modelo seleccionado...",
+  "Redactando en lenguaje administrativo formal...",
+  "Organizando el contenido para su revisión...",
 ];
 
 type QuickExample = {
@@ -190,6 +198,14 @@ export function GeneradorIASection({
     const timeoutId = window.setTimeout(() => setSuccessMessage(""), 4500);
     return () => window.clearTimeout(timeoutId);
   }, [successMessage]);
+
+  useEffect(() => {
+    trackActivity({
+      eventType: "checklist_view",
+      section: "Generador IA",
+      detail: "Antes de utilizar el borrador",
+    });
+  }, []);
 
   const modelsForType = useMemo(
     () => documentModels.filter((model) => model.type === selectedType),
@@ -345,9 +361,18 @@ export function GeneradorIASection({
       }
 
       setGeneratedDocumentText(result.generatedText.trim());
-      setSuccessMessage("Borrador generado correctamente.");
+      setSuccessMessage(
+        "Borrador generado correctamente. Revisá el contenido antes de descargarlo o utilizarlo.",
+      );
       trackActivity({
         eventType: "draft_generate_success",
+        section: "Generador IA",
+        detail: selectedModel.title,
+        documentType: selectedModel.type,
+        modelId: selectedModel.id,
+      });
+      trackActivity({
+        eventType: "generator_draft_success",
         section: "Generador IA",
         detail: selectedModel.title,
         documentType: selectedModel.type,
@@ -361,15 +386,14 @@ export function GeneradorIASection({
         documentType: selectedModel.type,
         modelId: selectedModel.id,
       });
+      console.error("No se pudo generar el borrador con IA.", error);
       if (error instanceof DOMException && error.name === "AbortError") {
         setAiError(
           "La generación demoró más de lo esperado. Intentá nuevamente con indicaciones más breves.",
         );
       } else {
         setAiError(
-          error instanceof Error && error.message
-            ? error.message
-            : "No se pudo generar el documento. Revisá la conexión o la configuración de Gemini.",
+          "No se pudo generar el borrador en este momento. Revisá los datos ingresados e intentá nuevamente.",
         );
       }
     } finally {
@@ -745,6 +769,30 @@ function DocumentPreview({
   onShowTechnicalPrompt: () => void;
 }) {
   const [isExporting, setIsExporting] = useState(false);
+  const [generationMessageIndex, setGenerationMessageIndex] = useState(0);
+  const [actionMessage, setActionMessage] = useState<{
+    tone: "success" | "error";
+    text: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!isGeneratingAI) return;
+
+    const intervalId = window.setInterval(() => {
+      setGenerationMessageIndex((current) =>
+        current === generationMessages.length - 1 ? 0 : current + 1,
+      );
+    }, 2300);
+
+    return () => window.clearInterval(intervalId);
+  }, [isGeneratingAI]);
+
+  useEffect(() => {
+    if (!actionMessage) return;
+
+    const timeoutId = window.setTimeout(() => setActionMessage(null), 4200);
+    return () => window.clearTimeout(timeoutId);
+  }, [actionMessage]);
 
   const handleExport = async () => {
     if (isExporting) return;
@@ -765,11 +813,16 @@ function DocumentPreview({
         documentType: model.type,
         modelId: model.id,
       });
+      setActionMessage({
+        tone: "success",
+        text: "Documento Word descargado correctamente.",
+      });
     } catch (error) {
       console.error("No se pudo generar el documento Word.", error);
-      window.alert(
-        "No se pudo generar el documento Word. Revisá la consola para más detalles.",
-      );
+      setActionMessage({
+        tone: "error",
+        text: "No se pudo completar la descarga en este momento. Intentá nuevamente.",
+      });
     } finally {
       setIsExporting(false);
     }
@@ -789,8 +842,12 @@ function DocumentPreview({
         documentType: model.type,
         modelId: model.id,
       });
-      window.alert("El texto visible fue copiado al portapapeles.");
-    } catch {
+      setActionMessage({
+        tone: "success",
+        text: "Texto copiado correctamente.",
+      });
+    } catch (error) {
+      console.error("No se pudo copiar el texto.", error);
       try {
         copyTextFallback(displayedDocument);
         trackActivity({
@@ -800,9 +857,16 @@ function DocumentPreview({
           documentType: model.type,
           modelId: model.id,
         });
-        window.alert("El texto visible fue copiado al portapapeles.");
-      } catch {
-        window.alert("No se pudo copiar automáticamente el documento.");
+        setActionMessage({
+          tone: "success",
+          text: "Texto copiado correctamente.",
+        });
+      } catch (fallbackError) {
+        console.error("No se pudo copiar el texto con fallback.", fallbackError);
+        setActionMessage({
+          tone: "error",
+          text: "No se pudo copiar el texto en este momento. Intentá nuevamente.",
+        });
       }
     }
   };
@@ -833,7 +897,7 @@ function DocumentPreview({
                 size={26}
               />
               <p className="mt-3 text-xs font-bold text-[#173055]">
-                Generando borrador administrativo...
+                {generationMessages[generationMessageIndex]}
               </p>
               <p className="mt-1.5 text-[10px] leading-4 text-[#607491]">
                 Estamos redactando el documento con los datos cargados.
@@ -858,6 +922,60 @@ function DocumentPreview({
         </div>
       )}
 
+      {actionMessage && (
+        <div
+          role="status"
+          className={`mt-3 rounded-lg border px-3 py-2 text-[10px] font-semibold leading-4 ${
+            actionMessage.tone === "success"
+              ? "border-[#bfe2ce] bg-[#effaf3] text-[#16844a]"
+              : "border-[#f0c5bd] bg-[#fff3f0] text-[#bd4a37]"
+          }`}
+        >
+          {actionMessage.text}
+        </div>
+      )}
+
+      <div className="mt-4 flex gap-3 rounded-2xl border border-[#c7dced] bg-[linear-gradient(135deg,#f3f8ff,#ffffff)] p-4">
+        <Info className="mt-0.5 shrink-0 text-[#0863c8]" size={18} />
+        <p className="text-[10px] leading-5 text-[#526987]">
+          El borrador generado por inteligencia artificial debe ser revisado,
+          corregido y validado por el área correspondiente antes de su
+          impresión, firma, remisión o presentación formal. MuniDoc Salta
+          brinda asistencia en la redacción, pero no reemplaza el criterio
+          administrativo ni la intervención de las dependencias competentes.
+        </p>
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-[#d4e3f1] bg-white/90 p-4">
+        <div className="flex items-center gap-2">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#eaf4ff] text-[#0863c8]">
+            <ClipboardCheck size={18} />
+          </span>
+          <h4 className="text-xs font-bold text-[#173055]">
+            Antes de utilizar el borrador
+          </h4>
+        </div>
+        <ul className="mt-3 grid gap-2 text-[10px] leading-5 text-[#526987] sm:grid-cols-2">
+          {[
+            "Verificar destinatario, asunto y fecha.",
+            "Revisar que el contenido responda al trámite solicitado.",
+            "Corregir datos incompletos o campos entre corchetes.",
+            "Controlar nombres, cargos, expedientes y dependencias.",
+            "Validar el texto con el área correspondiente antes de firmar o remitir.",
+          ].map((item) => (
+            <li key={item} className="flex gap-2">
+              <Check className="mt-0.5 shrink-0 text-[#16884c]" size={14} />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="mt-3 rounded-xl border border-[#d4e1ef] bg-white/80 px-3 py-2 text-[10px] leading-5 text-[#607491]">
+        Antes de descargar, verificá que el borrador respete los datos,
+        destinatario, asunto y contenido correspondiente.
+      </div>
+
       <div className="mt-4 grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
         <Button
           variant="primary"
@@ -870,7 +988,7 @@ function DocumentPreview({
           ) : (
             <Sparkles size={16} />
           )}
-          {isGeneratingAI ? "Generando borrador..." : "Generar borrador"}
+          {isGeneratingAI ? "Generando..." : "Generar borrador"}
         </Button>
         <Button
           className="h-10 gap-1.5 whitespace-nowrap px-2 text-[10px]"
@@ -894,7 +1012,7 @@ function DocumentPreview({
           role="status"
           className="mt-2 text-center text-[10px] font-medium text-[#607491]"
         >
-          Esto puede tardar unos segundos. No cierres esta ventana.
+          {generationMessages[generationMessageIndex]} No cierres esta ventana.
         </p>
       )}
 
@@ -1123,3 +1241,4 @@ function ToolbarSelect({
     </select>
   );
 }
+

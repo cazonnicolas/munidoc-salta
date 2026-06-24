@@ -17,6 +17,15 @@ const allowedEvents = new Set([
   "admin_login_success",
   "admin_login_error",
   "manual_chapter_view",
+  "view_about_munidoc",
+  "copy_app_link",
+  "activity_report_export",
+  "generator_responsibility_notice_view",
+  "help_about_click",
+  "quick_guide_view",
+  "good_practices_view",
+  "checklist_view",
+  "generator_draft_success",
 ]);
 
 function cleanText(value: unknown, maxLength: number) {

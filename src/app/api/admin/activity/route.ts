@@ -44,7 +44,7 @@ function countBy<T extends string>(items: ActivityEvent[], getter: (item: Activi
   );
 }
 
-function buildMetrics(events: ActivityEvent[]) {
+function buildMetrics(events: ActivityEvent[], dataSource: "real" | "demo") {
   const todayStart = startOfLocalDay();
   const weekStart = new Date(todayStart);
   weekStart.setDate(weekStart.getDate() - 6);
@@ -83,6 +83,8 @@ function buildMetrics(events: ActivityEvent[]) {
 
   return {
     success: true,
+    dataSource,
+    lastUpdatedAt: new Date().toISOString(),
     metrics: {
       visitsToday: todayViews.length,
       sessionsWeek: weekViews.length,
@@ -126,7 +128,7 @@ function demoResponse() {
     created_at: new Date(now.getTime() - Number(hoursAgo) * 60 * 60 * 1000).toISOString(),
   }));
 
-  return buildMetrics(events);
+  return buildMetrics(events, "demo");
 }
 
 export async function GET() {
@@ -155,5 +157,5 @@ export async function GET() {
     return NextResponse.json(demoResponse());
   }
 
-  return NextResponse.json(buildMetrics((data ?? []) as ActivityEvent[]));
+  return NextResponse.json(buildMetrics((data ?? []) as ActivityEvent[], "real"));
 }

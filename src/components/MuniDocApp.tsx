@@ -18,6 +18,7 @@ export function MuniDocApp() {
   const [selectedModelId, setSelectedModelId] = useState<string>();
   const [showAdminAccessModal, setShowAdminAccessModal] = useState(false);
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [aboutFocusToken, setAboutFocusToken] = useState(0);
 
   useEffect(() => {
     const checkExistingSession = async () => {
@@ -43,8 +44,6 @@ export function MuniDocApp() {
   }, [activeSection]);
 
   const handleAdminClick = () => {
-    console.log("Click en Agente Municipal");
-
     if (isAdminAuthenticated) {
       setActiveSection("actividad");
       return;
@@ -64,6 +63,11 @@ export function MuniDocApp() {
     setActiveSection("generador");
   };
 
+  const handleShowAbout = () => {
+    setAboutFocusToken((current) => current + 1);
+    setActiveSection("ayuda");
+  };
+
   return (
     <>
       <AppShell
@@ -75,6 +79,7 @@ export function MuniDocApp() {
           <HomeSection
             onNavigate={setActiveSection}
             onCreateNote={handleCreateNote}
+            onShowAbout={handleShowAbout}
           />
         )}
         {activeSection === "biblioteca" && <BibliotecaSection />}
@@ -88,7 +93,10 @@ export function MuniDocApp() {
           <GeneradorIASection selectedModelId={selectedModelId} />
         )}
         {activeSection === "ayuda" && (
-          <AyudaSection onNavigate={setActiveSection} />
+          <AyudaSection
+            onNavigate={setActiveSection}
+            aboutFocusToken={aboutFocusToken}
+          />
         )}
         {activeSection === "actividad" && (
           <ActivityPanelSection

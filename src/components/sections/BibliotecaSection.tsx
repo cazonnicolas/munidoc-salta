@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import {
@@ -288,7 +288,7 @@ export function BibliotecaSection() {
               ))
             ) : (
               <p className="px-4 py-8 text-center text-sm leading-6 text-[#667b98]">
-                No hay contenidos disponibles para esta categoría.
+                No se encontraron capítulos para el filtro seleccionado. Probá limpiar los filtros o seleccionar otra categoría.
               </p>
             )}
           </nav>
@@ -494,7 +494,7 @@ export function BibliotecaSection() {
                 Sin resultados
               </h3>
               <p className="mt-2 text-sm text-[#667b98]">
-                No hay contenidos disponibles para esta categoría.
+                No se encontraron capítulos para el filtro seleccionado. Probá limpiar los filtros o seleccionar otra categoría.
               </p>
               <Button className="mt-5" onClick={clearFilters}>
                 Limpiar filtros
@@ -547,3 +547,4 @@ function ChapterButton({
     </button>
   );
 }
+

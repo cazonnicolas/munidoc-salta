@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import {
@@ -9,6 +9,7 @@ import {
   FileStack,
   HelpCircle,
   History,
+  Info,
   LockKeyhole,
   Megaphone,
   Search,
@@ -22,6 +23,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { InstitutionalLogo } from "@/components/ui/InstitutionalLogo";
 import { trackActivity } from "@/lib/activityClient";
+import { APP_INFO } from "@/lib/appInfo";
 import {
   featureCards,
   quickLinks,
@@ -50,9 +52,11 @@ const iconColors: Record<string, string> = {
 export function HomeSection({
   onNavigate,
   onCreateNote,
+  onShowAbout,
 }: {
   onNavigate: (section: SectionId) => void;
   onCreateNote: () => void;
+  onShowAbout: () => void;
 }) {
   const [toast, setToast] = useState<{
     title: string;
@@ -111,24 +115,42 @@ export function HomeSection({
     if (title === "Mis descargas") showDownloadsToast();
   };
 
+  const handleShowAbout = () => {
+    trackActivity({
+      eventType: "help_about_click",
+      section: "Inicio",
+      detail: "Ver más información",
+    });
+    onShowAbout();
+  };
+
   return (
     <section className="section-stage space-y-6">
       <section className="decorated-panel relative min-h-[190px] overflow-hidden rounded-2xl border border-[#b8d5f2] bg-[linear-gradient(115deg,#eef7ff_0%,#fbfdff_50%,#eaf5ff_100%)] px-7 py-8 shadow-[0_14px_34px_rgba(28,78,132,0.07)] sm:px-8">
         <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-[#1883e2] via-[#0864c9] to-[#65adeb]" />
         <div className="absolute -bottom-20 right-44 size-52 rounded-full border border-[#5d9fde]/10" />
         <div className="absolute -bottom-12 right-52 size-36 rounded-full border border-[#5d9fde]/10" />
-        <div className="relative z-10 max-w-[560px]">
+        <div className="relative z-10 max-w-[600px]">
           <h2 className="text-[22px] font-bold tracking-[-0.02em] text-[#10264c]">
-            Bienvenido Agente Municipal <span aria-hidden>👋</span>
+            Bienvenido Agente Municipal
           </h2>
           <p className="mt-3 max-w-[510px] text-sm leading-6 text-[#304665]">
             Tu plataforma para aprender, practicar y optimizar la redacción de
             documentos administrativos municipales.
           </p>
-          <div className="mt-5 flex flex-wrap items-center gap-5 text-xs">
+          <p className="mt-3 max-w-[570px] text-[13px] leading-6 text-[#405b7e]">
+            Una herramienta digital para fortalecer la redacción administrativa
+            municipal, ordenar modelos documentales y acompañar a los agentes
+            en la elaboración de borradores formales.
+          </p>
+          <div className="mt-5 flex flex-wrap items-center gap-3 text-xs">
             <span className="inline-flex items-center gap-2 rounded-lg border border-[#c5dcf7] bg-white/65 px-3 py-2 font-medium text-[#075cc5] shadow-sm backdrop-blur">
               <LockKeyhole size={14} />
               Uso interno
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-lg border border-[#d2e3f6] bg-white/55 px-3 py-2 font-medium text-[#365779] shadow-sm backdrop-blur">
+              <Info size={14} />
+              {APP_INFO.prototypeStatus} — {APP_INFO.useType}
             </span>
             <span className="inline-flex items-center gap-2 text-[#263b58]">
               <span className="size-2 rounded-full bg-[#1bab64]" />
@@ -141,6 +163,68 @@ export function HomeSection({
           <InstitutionalLogo className="w-[160px]" />
         </div>
       </section>
+
+      <Card className="decorated-panel border-[#c7dcf0] bg-[linear-gradient(135deg,#ffffff,#f4f9ff)] p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-start gap-4">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl border border-[#cce1f6] bg-[#eaf4ff] text-[#0863c8] shadow-sm">
+              <Info size={22} strokeWidth={1.8} />
+            </span>
+            <div>
+              <h3 className="text-base font-bold text-[#173055]">
+                Acerca de {APP_INFO.name}
+              </h3>
+              <p className="mt-2 max-w-4xl text-[12px] leading-6 text-[#526987]">
+                MuniDoc Salta es un prototipo digital de uso interno municipal,
+                desarrollado para acompañar la consulta, redacción y generación
+                de documentos administrativos. Integra biblioteca teórica,
+                modelos documentales, asistencia con inteligencia artificial y
+                un panel privado de actividad para seguimiento del uso de la
+                plataforma.
+              </p>
+            </div>
+          </div>
+          <Button
+            className="h-10 shrink-0 gap-2 self-start lg:self-center"
+            onClick={handleShowAbout}
+          >
+            Ver más información
+            <ChevronRight size={15} />
+          </Button>
+        </div>
+      </Card>
+
+      <Card className="border-[#c9dcee] bg-white/90 p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-[#173055]">
+              Estado del prototipo
+            </h3>
+            <p className="mt-2 max-w-4xl text-[12px] leading-6 text-[#526987]">
+              MuniDoc Salta se encuentra en etapa de prototipo controlado. La
+              plataforma puede ser utilizada para consulta, asistencia en
+              redacción y generación de borradores administrativos, siempre bajo
+              revisión del agente o área correspondiente.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 lg:max-w-[420px] lg:justify-end">
+            {[
+              "Biblioteca activa",
+              "Modelos activos",
+              "Generador IA activo",
+              "Panel de actividad activo",
+              APP_INFO.useType,
+            ].map((item) => (
+              <span
+                key={item}
+                className="rounded-lg border border-[#cfe0f1] bg-[#f5f9ff] px-3 py-1.5 text-[10px] font-semibold text-[#075cc5]"
+              >
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+      </Card>
 
       <section className="grid auto-rows-fr gap-5 md:grid-cols-2 xl:grid-cols-3">
         {featureCards.map((feature) => {
@@ -393,3 +477,4 @@ function NewsItem({
     </article>
   );
 }
+

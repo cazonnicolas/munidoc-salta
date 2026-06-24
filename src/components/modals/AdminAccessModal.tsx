@@ -56,7 +56,11 @@ export function AdminAccessModal({
       const result = (await response.json()) as { success?: boolean; error?: string };
 
       if (!response.ok || !result.success) {
-        setError(result.error || "No se pudo validar el acceso.");
+        setError(
+          result.error === "Contraseña incorrecta."
+            ? "Contraseña incorrecta. Intentá nuevamente."
+            : result.error || "No se pudo validar el acceso.",
+        );
         return;
       }
 
