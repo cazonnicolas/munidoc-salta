@@ -5,10 +5,12 @@ import type { SectionId } from "@/lib/navigation";
 export function AppShell({
   activeSection,
   onSectionChange,
+  onAdminClick,
   children,
 }: {
   activeSection: SectionId;
   onSectionChange: (section: SectionId) => void;
+  onAdminClick: () => void;
   children: React.ReactNode;
 }) {
   return (
@@ -16,6 +18,7 @@ export function AppShell({
       <Sidebar
         activeSection={activeSection}
         onSectionChange={onSectionChange}
+        onAdminClick={onAdminClick}
       />
       <div className="lg:pl-[240px]">
         <Topbar />

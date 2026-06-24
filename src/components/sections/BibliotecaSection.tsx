@@ -18,6 +18,7 @@ import {
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { trackActivity } from "@/lib/activityClient";
 import { libraryChapters, type LibraryChapter } from "@/lib/data";
 
 const categories = [
@@ -116,7 +117,36 @@ export function BibliotecaSection() {
 
   const navigateChapter = (direction: -1 | 1) => {
     const nextChapter = filteredChapters[selectedIndex + direction];
-    if (nextChapter) setSelectedChapterId(nextChapter.id);
+    if (nextChapter) {
+      setSelectedChapterId(nextChapter.id);
+      trackActivity({
+        eventType: "manual_chapter_view",
+        section: "Biblioteca",
+        detail: nextChapter.title,
+      });
+    }
+  };
+
+  const selectChapter = (nextChapter: LibraryChapter) => {
+    setSelectedChapterId(nextChapter.id);
+    trackActivity({
+      eventType: "manual_chapter_view",
+      section: "Biblioteca",
+      detail: nextChapter.title,
+    });
+  };
+
+  const handleManualDownload = (format: "PDF" | "Word") => {
+    trackActivity({
+      eventType: format === "PDF" ? "manual_download_pdf" : "manual_download_word",
+      section: "Biblioteca",
+      detail: `Manual completo ${format}`,
+    });
+    setDownloadMessage(
+      format === "PDF"
+        ? "Próximamente se habilitará la descarga del manual completo en PDF."
+        : "Próximamente se habilitará la descarga del manual completo en Word.",
+    );
   };
 
   return (
@@ -139,22 +169,14 @@ export function BibliotecaSection() {
         <div className="flex flex-wrap gap-2">
           <Button
             className="h-10 gap-2"
-            onClick={() =>
-              setDownloadMessage(
-                "Próximamente se habilitará la descarga del manual completo en PDF.",
-              )
-            }
+            onClick={() => handleManualDownload("PDF")}
           >
             <Download size={15} />
             Descargar manual completo PDF
           </Button>
           <Button
             className="h-10 gap-2"
-            onClick={() =>
-              setDownloadMessage(
-                "Próximamente se habilitará la descarga del manual completo en Word.",
-              )
-            }
+            onClick={() => handleManualDownload("Word")}
           >
             <FileText size={15} />
             Descargar manual completo Word
@@ -261,7 +283,7 @@ export function BibliotecaSection() {
                   key={item.id}
                   chapter={item}
                   selected={item.id === chapter?.id}
-                  onClick={() => setSelectedChapterId(item.id)}
+                  onClick={() => selectChapter(item)}
                 />
               ))
             ) : (

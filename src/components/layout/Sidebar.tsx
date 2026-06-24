@@ -26,9 +26,11 @@ const menuItems = [
 export function Sidebar({
   activeSection,
   onSectionChange,
+  onAdminClick,
 }: {
   activeSection: SectionId;
   onSectionChange: (section: SectionId) => void;
+  onAdminClick: () => void;
 }) {
   return (
     <aside className="relative overflow-hidden border-[#d8e4ef] bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_58%,#f6faff_100%)] lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-[240px] lg:flex-col lg:border-r lg:shadow-[8px_0_30px_rgba(30,70,115,0.025)]">
@@ -76,7 +78,12 @@ export function Sidebar({
       </nav>
 
       <div className="relative mt-auto hidden px-4 pb-2 lg:block">
-        <div className="mb-2.5 rounded-2xl border border-[#c9d9e8] bg-[linear-gradient(145deg,#ffffff,#eef6ff)] px-3.5 py-2.5 shadow-[0_9px_24px_rgba(30,72,120,0.075)] ring-1 ring-white/80">
+        <button
+          type="button"
+          onClick={onAdminClick}
+          title="Acceso privado"
+          className="mb-2.5 w-full cursor-pointer rounded-2xl border border-[#c9d9e8] bg-[linear-gradient(145deg,#ffffff,#eef6ff)] px-3.5 py-2.5 shadow-[0_9px_24px_rgba(30,72,120,0.075)] ring-1 ring-white/80 transition-all hover:-translate-y-0.5 hover:border-[#9fc4ea] hover:shadow-[0_12px_28px_rgba(30,72,120,0.11)] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0871dc]/25"
+        >
           <div className="flex items-center justify-center gap-3">
             <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#238be5] to-[#0751ad] text-white shadow-[0_7px_16px_rgba(9,91,184,0.22)] ring-4 ring-[#e7f2ff]">
               <User size={20} strokeWidth={1.9} />
@@ -85,7 +92,7 @@ export function Sidebar({
               Agente Municipal
             </p>
           </div>
-        </div>
+        </button>
 
         <div className="mb-1.5 flex items-center gap-2 rounded-xl border border-[#cbdff3] bg-[linear-gradient(135deg,#e8f3ff,#f3f8ff)] px-4 py-2.5 text-[11px] font-semibold text-[#075cc5] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_5px_14px_rgba(31,88,151,0.035)]">
           <span className="flex size-6 items-center justify-center rounded-lg bg-white text-[#075cc5] shadow-sm">

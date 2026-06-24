@@ -597,52 +597,6 @@ export const libraryChapters: LibraryChapter[] = [
       "Ejemplo 2: “Asimismo, se informa que la documentación respaldatoria se encuentra adjunta.”",
     ],
   },
-  {
-    id: "evaluacion-taller",
-    number: 10,
-    title: "Evaluación del taller",
-    category: "Recursos",
-    readTime: "8 min de lectura",
-    level: "Básico",
-    updatedAt: "23/06/2026",
-    summary:
-      "La evaluación permite comprobar si los contenidos de redacción y gestión documental pueden aplicarse correctamente a situaciones administrativas reales.",
-    objective:
-      "Reconocer distintas formas de evaluación y utilizar la teoría del manual para resolver consignas prácticas.",
-    sections: [
-      {
-        title: "Finalidad de la evaluación",
-        content:
-          "Evaluar permite identificar aprendizajes consolidados y aspectos que requieren revisión. El propósito no es memorizar fórmulas, sino comprender cuándo corresponde cada documento y cómo redactarlo.",
-      },
-      {
-        title: "Tipos de consignas",
-        content:
-          "Pueden utilizarse preguntas de verdadero o falso, opción múltiple, completar expresiones y ejercicios de producción práctica. Cada formato permite revisar conocimientos diferentes.",
-      },
-      {
-        title: "Aplicación práctica",
-        content:
-          "Las consignas de producción acercan la teoría al trabajo cotidiano: redactar un pase, corregir una nota o seleccionar una fórmula adecuada permite demostrar comprensión y criterio administrativo.",
-      },
-    ],
-    keyPoints: [
-      "La evaluación orienta la mejora del aprendizaje.",
-      "Debe combinar conceptos y aplicación práctica.",
-      "Las consignas deben ser claras y vinculadas con tareas reales.",
-      "La revisión de errores también forma parte del aprendizaje.",
-    ],
-    rules: [
-      "Leer la consigna completa antes de responder.",
-      "Aplicar las reglas del tipo documental solicitado.",
-      "No inventar datos que no fueron proporcionados.",
-      "Revisar claridad, ortografía y formalidad.",
-    ],
-    examples: [
-      "Ejemplo 1: Identificar si una sigla está correctamente escrita.",
-      "Ejemplo 2: Redactar un pase breve remitiendo un expediente a otra dependencia.",
-    ],
-  },
 ];
 
 export const featureCards = [

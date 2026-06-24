@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { InstitutionalLogo } from "@/components/ui/InstitutionalLogo";
+import { trackActivity } from "@/lib/activityClient";
 import {
   documentModels,
   type DocumentModel,
@@ -100,8 +101,26 @@ export function ModelosSection({
   }, [selectedModel]);
 
   const handleUseModel = (model: DocumentModel) => {
+    trackActivity({
+      eventType: "model_use_generator",
+      section: "Modelos",
+      detail: model.title,
+      documentType: model.type,
+      modelId: model.id,
+    });
     setSelectedModel(null);
     onUseModel(model.id);
+  };
+
+  const handleOpenModel = (model: DocumentModel) => {
+    trackActivity({
+      eventType: "model_view",
+      section: "Modelos",
+      detail: model.title,
+      documentType: model.type,
+      modelId: model.id,
+    });
+    setSelectedModel(model);
   };
 
   return (
@@ -133,7 +152,7 @@ export function ModelosSection({
             <FeaturedModelCard
               key={model.type}
               model={model}
-              onOpen={() => setSelectedModel(model)}
+              onOpen={() => handleOpenModel(model)}
             />
           ))}
         </div>
@@ -160,7 +179,7 @@ export function ModelosSection({
           <DocumentModelCard
             key={model.id}
             model={model}
-            onOpen={() => setSelectedModel(model)}
+            onOpen={() => handleOpenModel(model)}
             onUse={() => handleUseModel(model)}
           />
         ))}

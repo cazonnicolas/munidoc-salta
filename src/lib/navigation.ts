@@ -3,7 +3,8 @@ export type SectionId =
   | "biblioteca"
   | "modelos"
   | "generador"
-  | "ayuda";
+  | "ayuda"
+  | "actividad";
 
 export const sectionLabels: Record<SectionId, string> = {
   inicio: "Inicio",
@@ -11,4 +12,5 @@ export const sectionLabels: Record<SectionId, string> = {
   modelos: "Modelos",
   generador: "Generador IA",
   ayuda: "Ayuda",
+  actividad: "Panel de actividad",
 };

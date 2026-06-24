@@ -25,6 +25,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { InstitutionalLogo } from "@/components/ui/InstitutionalLogo";
+import { trackActivity } from "@/lib/activityClient";
 import {
   documentModels as defaultDocumentModels,
   type DocumentModel,
@@ -279,6 +280,13 @@ export function GeneradorIASection({
     setGeneratedDocumentText("");
     setAiError("");
     setSuccessMessage("");
+    trackActivity({
+      eventType: "quick_example_click",
+      section: "Generador IA",
+      detail: example.subject,
+      documentType: example.type,
+      modelId: firstModel.id,
+    });
   };
 
   const handleGenerateDraft = async () => {
@@ -293,6 +301,13 @@ export function GeneradorIASection({
     setIsGeneratingAI(true);
     setAiError("");
     setSuccessMessage("");
+    trackActivity({
+      eventType: "draft_generate_start",
+      section: "Generador IA",
+      detail: selectedModel.title,
+      documentType: selectedModel.type,
+      modelId: selectedModel.id,
+    });
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), 60_000);
 
@@ -331,7 +346,21 @@ export function GeneradorIASection({
 
       setGeneratedDocumentText(result.generatedText.trim());
       setSuccessMessage("Borrador generado correctamente.");
+      trackActivity({
+        eventType: "draft_generate_success",
+        section: "Generador IA",
+        detail: selectedModel.title,
+        documentType: selectedModel.type,
+        modelId: selectedModel.id,
+      });
     } catch (error) {
+      trackActivity({
+        eventType: "draft_generate_error",
+        section: "Generador IA",
+        detail: selectedModel.title,
+        documentType: selectedModel.type,
+        modelId: selectedModel.id,
+      });
       if (error instanceof DOMException && error.name === "AbortError") {
         setAiError(
           "La generación demoró más de lo esperado. Intentá nuevamente con indicaciones más breves.",
@@ -729,6 +758,13 @@ function DocumentPreview({
         fileName: BORRADOR_WORD_FILE_NAME,
         logoUrl: "/logo-salta.png",
       });
+      trackActivity({
+        eventType: "word_download",
+        section: "Generador IA",
+        detail: model.title,
+        documentType: model.type,
+        modelId: model.id,
+      });
     } catch (error) {
       console.error("No se pudo generar el documento Word.", error);
       window.alert(
@@ -746,10 +782,24 @@ function DocumentPreview({
       } else {
         copyTextFallback(displayedDocument);
       }
+      trackActivity({
+        eventType: "copy_text",
+        section: "Generador IA",
+        detail: model.title,
+        documentType: model.type,
+        modelId: model.id,
+      });
       window.alert("El texto visible fue copiado al portapapeles.");
     } catch {
       try {
         copyTextFallback(displayedDocument);
+        trackActivity({
+          eventType: "copy_text",
+          section: "Generador IA",
+          detail: model.title,
+          documentType: model.type,
+          modelId: model.id,
+        });
         window.alert("El texto visible fue copiado al portapapeles.");
       } catch {
         window.alert("No se pudo copiar automáticamente el documento.");

@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { InstitutionalLogo } from "@/components/ui/InstitutionalLogo";
+import { trackActivity } from "@/lib/activityClient";
 import {
   featureCards,
   quickLinks,
@@ -75,6 +76,13 @@ export function HomeSection({
     });
 
   const handleFeatureAction = (number: number) => {
+    const feature = featureCards.find((item) => item.number === number);
+    trackActivity({
+      eventType: "home_card_click",
+      section: "Inicio",
+      detail: feature?.action ?? feature?.title ?? "Card de inicio",
+    });
+
     if (number === 1) onNavigate("biblioteca");
     if (number === 2) onNavigate("modelos");
     if (number === 3) onCreateNote();
@@ -91,6 +99,12 @@ export function HomeSection({
   };
 
   const handleQuickLink = (title: string) => {
+    trackActivity({
+      eventType: "home_card_click",
+      section: "Inicio",
+      detail: title,
+    });
+
     if (title === "Redactar nueva nota") onCreateNote();
     if (title === "Buscar modelos") onNavigate("modelos");
     if (title === "Ver manual completo") onNavigate("biblioteca");
