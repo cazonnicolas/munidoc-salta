@@ -34,9 +34,14 @@ import {
 } from "@/lib/documentModels";
 import {
   buildAIPrompt,
+  buildFreeAIPromptPreview,
+  buildFreeProvisionalDocument,
   buildProvisionalDocument,
+  createEmptyFormData,
   createInitialFormData,
   type AdministrativeFormData,
+  type FreeDocumentType,
+  type GenerationMode,
 } from "@/lib/documentPrompt";
 import {
   BORRADOR_WORD_FILE_NAME,
@@ -52,9 +57,11 @@ const documentTypes: DocumentType[] = [
   "Constancia",
 ];
 
+const freeDocumentTypes: FreeDocumentType[] = ["AUTO", ...documentTypes];
+
 const generationMessages = [
   "Preparando borrador administrativo...",
-  "Aplicando estructura del modelo seleccionado...",
+  "Interpretando las indicaciones cargadas...",
   "Redactando en lenguaje administrativo formal...",
   "Organizando el contenido para su revisión...",
 ];
@@ -71,17 +78,11 @@ type QuickExample = {
 const quickExamples: QuickExample[] = [
   {
     type: "Nota",
-    number: "001",
-    date: "SALTA, 23 DE JUNIO DE 2026",
-    recipient: "DIRECCIÓN DE COMPRAS",
-    subject: "Solicitud de adquisición de insumos de oficina",
-    prompt: `Necesito generar una NOTA administrativa formal emitida desde la Coordinación General de Recursos Humanos, dirigida a la Dirección de Compras.
-
-El motivo de la nota es solicitar la adquisición de insumos de oficina para el normal funcionamiento de la Coordinación General de Recursos Humanos. Se requiere incluir resmas de papel, carpetas, folios, biromes, tóner para impresora y demás elementos necesarios para el desarrollo de las tareas administrativas diarias.
-
-La nota debe fundamentar que el stock actual resulta insuficiente y que dichos insumos son necesarios para garantizar la continuidad de las actividades internas, la atención de trámites y la correcta gestión documental del área.
-
-Debe redactarse con lenguaje administrativo formal, claro, preciso y respetuoso. Incluir introducción, pedido principal, fundamento y cierre formal. No inventar expedientes, nombres propios, cargos personales ni normativa. Si falta algún dato importante, dejarlo entre corchetes.`,
+    number: "",
+    date: "",
+    recipient: "Dr. Gustavo Serralta",
+    subject: "Comunicación de inasistencia por razones médicas",
+    prompt: `Necesito generar una nota formal dirigida al Dr. Gustavo Serralta, informando que no asistiré a trabajar por razones médicas. Soy agente del área de Recursos Humanos. La nota debe tener tono formal, claro y respetuoso, dejando entre corchetes la fecha, número de documento o cualquier dato que falte.`,
   },
   {
     type: "Pase",
@@ -170,20 +171,22 @@ export function GeneradorIASection({
     documentModels.find((model) => model.id === selectedModelId) ??
     documentModels.find((model) => model.type === "Nota") ??
     documentModels[0];
+  const initialGenerationMode: GenerationMode = selectedModelId ? "model" : "free";
 
+  const [generationMode, setGenerationMode] =
+    useState<GenerationMode>(initialGenerationMode);
+  const [freeDocumentType, setFreeDocumentType] =
+    useState<FreeDocumentType>("AUTO");
   const [selectedType, setSelectedType] = useState<DocumentType>(
     initialModel?.type ?? "Nota",
   );
-  const [activeModelId, setActiveModelId] = useState(initialModel?.id ?? "");
+  const [activeModelId, setActiveModelId] = useState(
+    selectedModelId ?? "",
+  );
   const [formData, setFormData] = useState<AdministrativeFormData>(() =>
-    initialModel
+    initialGenerationMode === "model" && initialModel
       ? createInitialFormData(initialModel)
-      : {
-          number: "[NÚMERO]",
-          date: "SALTA, [FECHA]",
-          recipient: "[DESTINATARIO]",
-          subject: "[ASUNTO]",
-        },
+      : createEmptyFormData(),
   );
   const [userPrompt, setUserPrompt] = useState("");
   const [generatedDocumentText, setGeneratedDocumentText] = useState("");
@@ -213,25 +216,44 @@ export function GeneradorIASection({
   );
 
   const selectedModel =
-    documentModels.find((model) => model.id === activeModelId) ??
-    modelsForType[0] ??
-    initialModel;
+    generationMode === "model"
+      ? documentModels.find((model) => model.id === activeModelId) ??
+        modelsForType[0] ??
+        initialModel
+      : undefined;
 
   const provisionalDocument = useMemo(
-    () =>
-      selectedModel
+    () => {
+      if (generationMode === "free") {
+        return buildFreeProvisionalDocument({
+          documentType: freeDocumentType,
+          formData,
+          userPrompt,
+        });
+      }
+
+      return selectedModel
         ? buildProvisionalDocument({
             model: selectedModel,
             formData,
             userPrompt,
           })
-        : "",
-    [formData, selectedModel, userPrompt],
+        : "";
+    },
+    [formData, freeDocumentType, generationMode, selectedModel, userPrompt],
   );
 
   const technicalPrompt = useMemo(
-    () =>
-      selectedModel
+    () => {
+      if (generationMode === "free") {
+        return buildFreeAIPromptPreview({
+          documentType: freeDocumentType,
+          formData,
+          userPrompt,
+        });
+      }
+
+      return selectedModel
         ? buildAIPrompt({
             documentType: selectedModel.type,
             model: selectedModel,
@@ -240,15 +262,62 @@ export function GeneradorIASection({
             formData,
             userPrompt,
           })
-        : "",
-    [formData, selectedModel, userPrompt],
+        : "";
+    },
+    [formData, freeDocumentType, generationMode, selectedModel, userPrompt],
   );
 
   const selectModel = (model: DocumentModel) => {
+    setGenerationMode("model");
     setSelectedType(model.type);
     setActiveModelId(model.id);
     setFormData(createInitialFormData(model));
-    setUserPrompt("");
+    setGeneratedDocumentText("");
+    setAiError("");
+    setSuccessMessage("");
+  };
+
+  const handleGenerationModeChange = (mode: GenerationMode) => {
+    setGenerationMode(mode);
+    setGeneratedDocumentText("");
+    setAiError("");
+    setSuccessMessage("");
+
+    if (mode === "free") {
+      setActiveModelId("");
+      trackActivity({
+        eventType: "generation_mode_selected",
+        section: "Generador IA",
+        detail: "Modo libre",
+        documentType: freeDocumentType,
+      });
+      return;
+    }
+
+    const model =
+      documentModels.find((item) => item.id === activeModelId) ??
+      modelsForType[0] ??
+      initialModel;
+
+    if (model) {
+      setSelectedType(model.type);
+      setActiveModelId(model.id);
+      if (!formData.number && !formData.date && !formData.recipient && !formData.subject) {
+        setFormData(createInitialFormData(model));
+      }
+    }
+
+    trackActivity({
+      eventType: "generation_mode_selected",
+      section: "Generador IA",
+      detail: "Modo modelo",
+      documentType: model?.type,
+      modelId: model?.id,
+    });
+  };
+
+  const handleFreeDocumentTypeChange = (type: FreeDocumentType) => {
+    setFreeDocumentType(type);
     setGeneratedDocumentText("");
     setAiError("");
     setSuccessMessage("");
@@ -279,13 +348,10 @@ export function GeneradorIASection({
   };
 
   const handleQuickExample = (example: QuickExample) => {
-    const firstModel = documentModels.find(
-      (model) => model.type === example.type,
-    );
-    if (!firstModel) return;
-
+    setGenerationMode("free");
+    setFreeDocumentType(example.type);
     setSelectedType(example.type);
-    setActiveModelId(firstModel.id);
+    setActiveModelId("");
     setFormData({
       number: example.number,
       date: example.date,
@@ -301,15 +367,22 @@ export function GeneradorIASection({
       section: "Generador IA",
       detail: example.subject,
       documentType: example.type,
-      modelId: firstModel.id,
     });
   };
 
   const handleGenerateDraft = async () => {
     if (!userPrompt.trim()) {
       setAiError(
-        "Escribí primero las indicaciones para generar el borrador.",
+        generationMode === "free"
+          ? "Escribí primero qué documento necesitás generar."
+          : "Escribí primero las indicaciones para generar el borrador.",
       );
+      setSuccessMessage("");
+      return;
+    }
+
+    if (generationMode === "model" && !selectedModel) {
+      setAiError("Seleccioná primero un modelo documental.");
       setSuccessMessage("");
       return;
     }
@@ -320,9 +393,9 @@ export function GeneradorIASection({
     trackActivity({
       eventType: "draft_generate_start",
       section: "Generador IA",
-      detail: selectedModel.title,
-      documentType: selectedModel.type,
-      modelId: selectedModel.id,
+      detail: generationMode === "free" ? "Modo libre" : selectedModel?.title,
+      documentType: generationMode === "free" ? freeDocumentType : selectedModel?.type,
+      modelId: generationMode === "model" ? selectedModel?.id : undefined,
     });
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), 60_000);
@@ -332,13 +405,20 @@ export function GeneradorIASection({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          documentType: selectedModel.type,
-          selectedModel,
-          template: selectedModel.template,
-          fields: getDraftRequiredFields(selectedModel.fields),
-          formData,
-          userPrompt,
-          technicalPrompt,
+          generationMode,
+          documentType:
+            generationMode === "free" ? freeDocumentType : selectedModel?.type,
+          selectedModelId:
+            generationMode === "model" ? selectedModel?.id : null,
+          modelTitle:
+            generationMode === "model" ? selectedModel?.title : null,
+          modelContent:
+            generationMode === "model" ? selectedModel?.template : null,
+          number: formData.number,
+          placeAndDate: formData.date,
+          recipient: formData.recipient,
+          subject: formData.subject,
+          userInstructions: userPrompt,
         }),
         signal: controller.signal,
       });
@@ -367,24 +447,24 @@ export function GeneradorIASection({
       trackActivity({
         eventType: "draft_generate_success",
         section: "Generador IA",
-        detail: selectedModel.title,
-        documentType: selectedModel.type,
-        modelId: selectedModel.id,
+        detail: generationMode === "free" ? "Modo libre" : selectedModel?.title,
+        documentType: generationMode === "free" ? freeDocumentType : selectedModel?.type,
+        modelId: generationMode === "model" ? selectedModel?.id : undefined,
       });
       trackActivity({
         eventType: "generator_draft_success",
         section: "Generador IA",
-        detail: selectedModel.title,
-        documentType: selectedModel.type,
-        modelId: selectedModel.id,
+        detail: generationMode === "free" ? "Modo libre" : selectedModel?.title,
+        documentType: generationMode === "free" ? freeDocumentType : selectedModel?.type,
+        modelId: generationMode === "model" ? selectedModel?.id : undefined,
       });
     } catch (error) {
       trackActivity({
         eventType: "draft_generate_error",
         section: "Generador IA",
-        detail: selectedModel.title,
-        documentType: selectedModel.type,
-        modelId: selectedModel.id,
+        detail: generationMode === "free" ? "Modo libre" : selectedModel?.title,
+        documentType: generationMode === "free" ? freeDocumentType : selectedModel?.type,
+        modelId: generationMode === "model" ? selectedModel?.id : undefined,
       });
       console.error("No se pudo generar el borrador con IA.", error);
       if (error instanceof DOMException && error.name === "AbortError") {
@@ -405,7 +485,7 @@ export function GeneradorIASection({
   const displayedDocument =
     generatedDocumentText.trim() || provisionalDocument;
 
-  if (!selectedModel) {
+  if (generationMode === "model" && !selectedModel) {
     return (
       <Card className="p-6 text-sm text-[#526987]">
         No hay modelos de documentos disponibles.
@@ -450,21 +530,26 @@ export function GeneradorIASection({
 
       <div className="grid items-stretch gap-5 xl:grid-cols-[240px_300px_minmax(340px,1fr)] 2xl:grid-cols-[300px_350px_minmax(430px,1fr)]">
         <AssistantPanel
-          model={selectedModel}
           onExampleClick={handleQuickExample}
         />
         <DocumentForm
+          generationMode={generationMode}
+          freeDocumentType={freeDocumentType}
           selectedType={selectedType}
           selectedModel={selectedModel}
           modelsForType={modelsForType}
           formData={formData}
           userPrompt={userPrompt}
+          onGenerationModeChange={handleGenerationModeChange}
+          onFreeDocumentTypeChange={handleFreeDocumentTypeChange}
           onTypeChange={handleTypeChange}
           onModelChange={handleModelChange}
           onFormDataChange={handleFormDataChange}
           onUserPromptChange={handleUserPromptChange}
         />
         <DocumentPreview
+          generationMode={generationMode}
+          documentType={generationMode === "free" ? freeDocumentType : selectedModel?.type ?? "Nota"}
           model={selectedModel}
           displayedDocument={displayedDocument}
           generatedDocumentText={generatedDocumentText}
@@ -487,10 +572,8 @@ export function GeneradorIASection({
 }
 
 function AssistantPanel({
-  model,
   onExampleClick,
 }: {
-  model: DocumentModel;
   onExampleClick: (example: QuickExample) => void;
 }) {
   return (
@@ -514,7 +597,7 @@ function AssistantPanel({
       <div className="mt-4 space-y-4">
         <div className="ml-7 rounded-2xl rounded-tr-sm border border-[#d5e5f6] bg-[linear-gradient(135deg,#edf5ff,#f8fbff)] p-4 shadow-[0_5px_16px_rgba(31,83,140,0.035)]">
           <p className="text-[11px] leading-5 text-[#304867]">
-            Quiero preparar: <strong>{model.title.toUpperCase()}</strong>.
+            Quiero preparar: <strong>UN BORRADOR ADMINISTRATIVO</strong>.
           </p>
         </div>
 
@@ -578,21 +661,29 @@ function AssistantPanel({
 }
 
 function DocumentForm({
+  generationMode,
+  freeDocumentType,
   selectedType,
   selectedModel,
   modelsForType,
   formData,
   userPrompt,
+  onGenerationModeChange,
+  onFreeDocumentTypeChange,
   onTypeChange,
   onModelChange,
   onFormDataChange,
   onUserPromptChange,
 }: {
+  generationMode: GenerationMode;
+  freeDocumentType: FreeDocumentType;
   selectedType: DocumentType;
-  selectedModel: DocumentModel;
+  selectedModel?: DocumentModel;
   modelsForType: DocumentModel[];
   formData: AdministrativeFormData;
   userPrompt: string;
+  onGenerationModeChange: (mode: GenerationMode) => void;
+  onFreeDocumentTypeChange: (type: FreeDocumentType) => void;
   onTypeChange: (type: DocumentType) => void;
   onModelChange: (modelId: string) => void;
   onFormDataChange: (data: AdministrativeFormData) => void;
@@ -612,84 +703,45 @@ function DocumentForm({
           Preparación del documento
         </h3>
         <p className="mt-1 text-[10px] text-[#71819a]">
-          Completá los datos y explicá en lenguaje simple qué necesitás.
+          Elegí si querés redactar desde cero o trabajar sobre un modelo cargado.
         </p>
       </div>
 
       <form className="mt-4 space-y-4">
-        <div>
-          <h4 className="mb-3 text-[11px] font-bold uppercase tracking-[0.05em] text-[#075cc5]">
-            A. Datos del documento
-          </h4>
-          <div className="space-y-3">
-            <FormSelect
-              label="Tipo de documento"
-              value={selectedType}
-              onChange={(value) => onTypeChange(value as DocumentType)}
-            >
-              {documentTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type.toUpperCase()}
-                </option>
-              ))}
-            </FormSelect>
-
-            <FormSelect
-              label="Modelo específico"
-              value={selectedModel.id}
-              onChange={onModelChange}
-            >
-              {modelsForType.map((model, index) => (
-                <option key={model.id} value={model.id}>
-                  MODELO {index + 1}
-                </option>
-              ))}
-            </FormSelect>
-            <p className="-mt-1 text-[9px] leading-4 text-[#71819a]">
-              Modelo seleccionado:{" "}
-              <strong className="font-semibold text-[#526987]">
-                {selectedModel.title.toUpperCase()}
-              </strong>
-            </p>
-
-            <FormInput
-              label="Número"
-              value={formData.number}
-              onChange={(value) => updateField("number", value)}
-            />
-            <FormInput
-              label="Lugar y fecha"
-              value={formData.date}
-              onChange={(value) => updateField("date", value)}
-            />
-            <FormInput
-              label="Destinatario"
-              value={formData.recipient}
-              onChange={(value) => updateField("recipient", value)}
-            />
-            <FormInput
-              label="Asunto"
-              value={formData.subject}
-              onChange={(value) => updateField("subject", value)}
-            />
-          </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <ModeButton
+            active={generationMode === "free"}
+            title="Redactar desde cero"
+            description="Escribí lo que necesitás y MuniDoc armará el borrador."
+            onClick={() => onGenerationModeChange("free")}
+          />
+          <ModeButton
+            active={generationMode === "model"}
+            title="Usar modelo existente"
+            description="Seleccioná un tipo y modelo documental ya cargado."
+            onClick={() => onGenerationModeChange("model")}
+          />
         </div>
 
         <div className="border-t border-[#dce5ef] pt-4">
           <h4 className="text-[11px] font-bold uppercase tracking-[0.05em] text-[#7552d6]">
-            B. Indicaciones para la IA
+            Indicaciones para la IA
           </h4>
           <p className="mt-2 text-[9px] leading-4 text-[#667a97]">
-            Escribí con tus palabras qué documento necesitás generar, a quién va
-            dirigido, cuál es el motivo, qué datos debe incluir y cualquier
-            información importante para redactarlo correctamente.
+            {generationMode === "free"
+              ? "Escribí con tus palabras qué documento necesitás. Podés incluir destinatario, motivo, área, fechas, nombres, expediente o cualquier dato importante. Si omitís algún dato, MuniDoc dejará campos entre corchetes para completar luego."
+              : "En este modo se toma como base el modelo seleccionado. Indicá qué adaptación necesitás o qué datos debe contemplar el borrador."}
           </p>
           <textarea
             aria-label="Indicaciones para la IA"
             value={userPrompt}
             onChange={(event) => onUserPromptChange(event.target.value)}
-            placeholder="Ejemplo: Necesito una nota dirigida a la Dirección de Compras solicitando la adquisición de insumos de limpieza para las oficinas, porque el stock actual es insuficiente para el normal funcionamiento del área."
-            rows={7}
+            placeholder={
+              generationMode === "free"
+                ? "Ejemplo: Haceme una nota dirigida a mi jefe porque no voy a ir a trabajar por razones médicas. Soy del área de Recursos Humanos y mi jefe es el Dr. Gustavo Serralta."
+                : "Ejemplo: Adaptar este modelo para un agente que solicita licencia para examen."
+            }
+            rows={generationMode === "free" ? 9 : 7}
             className="mt-2 w-full resize-none rounded-xl border border-[#cfc5ef] bg-white px-3 py-3 text-[10px] leading-4 text-[#2d4565] shadow-[inset_0_1px_2px_rgba(55,45,100,0.025)] outline-none focus:border-[#8d72db] focus:ring-2 focus:ring-[#7552d6]/10"
           />
 
@@ -722,34 +774,143 @@ function DocumentForm({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-[#c9dfee] bg-[linear-gradient(145deg,#f2f8ff,#fbfdff)] p-4 shadow-[0_6px_18px_rgba(31,88,151,0.035)]">
-          <div className="flex items-center gap-2">
-            <FileText size={16} className="text-[#075cc5]" />
-            <h4 className="text-[11px] font-bold text-[#173055]">
-              Campos requeridos para este modelo
-            </h4>
-          </div>
-          <ul className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-            {getDraftRequiredFields(selectedModel.fields).map((field) => (
-              <li
-                key={field}
-                className="flex items-start gap-2 text-[10px] leading-4 text-[#526987]"
+        {generationMode === "free" ? (
+          <div className="rounded-2xl border border-[#c9dfee] bg-[linear-gradient(145deg,#f2f8ff,#fbfdff)] p-4 shadow-[0_6px_18px_rgba(31,88,151,0.035)]">
+            <div className="flex items-center gap-2">
+              <FileText size={16} className="text-[#075cc5]" />
+              <h4 className="text-[11px] font-bold text-[#173055]">
+                Datos opcionales
+              </h4>
+            </div>
+            <p className="mt-2 text-[9px] leading-4 text-[#667a97]">
+              No son obligatorios. Si los completás, la IA los usará; si faltan, los inferirá del pedido o dejará campos entre corchetes.
+            </p>
+            <div className="mt-3 space-y-3">
+              <FormSelect
+                label="Tipo de documento"
+                value={freeDocumentType}
+                onChange={(value) => onFreeDocumentTypeChange(value as FreeDocumentType)}
               >
-                <Check
-                  size={13}
-                  className="mt-0.5 shrink-0 text-[#16844a]"
-                />
-                {field}
-              </li>
-            ))}
-          </ul>
-        </div>
+                {freeDocumentTypes.map((type) => (
+                  <option key={type} value={type}>
+                    {type === "AUTO" ? "Detectar automáticamente" : type.toUpperCase()}
+                  </option>
+                ))}
+              </FormSelect>
+              <FormInput label="Número" value={formData.number} onChange={(value) => updateField("number", value)} />
+              <FormInput label="Lugar y fecha" value={formData.date} onChange={(value) => updateField("date", value)} />
+              <FormInput label="Destinatario" value={formData.recipient} onChange={(value) => updateField("recipient", value)} />
+              <FormInput label="Asunto" value={formData.subject} onChange={(value) => updateField("subject", value)} />
+            </div>
+          </div>
+        ) : (
+          <>
+            <div>
+              <h4 className="mb-3 text-[11px] font-bold uppercase tracking-[0.05em] text-[#075cc5]">
+                Datos del modelo
+              </h4>
+              <div className="space-y-3">
+                <FormSelect
+                  label="Tipo de documento"
+                  value={selectedType}
+                  onChange={(value) => onTypeChange(value as DocumentType)}
+                >
+                  {documentTypes.map((type) => (
+                    <option key={type} value={type}>
+                      {type.toUpperCase()}
+                    </option>
+                  ))}
+                </FormSelect>
+
+                <FormSelect
+                  label="Modelo específico"
+                  value={selectedModel?.id ?? ""}
+                  onChange={onModelChange}
+                >
+                  {modelsForType.map((model, index) => (
+                    <option key={model.id} value={model.id}>
+                      MODELO {index + 1}
+                    </option>
+                  ))}
+                </FormSelect>
+                <p className="-mt-1 text-[9px] leading-4 text-[#71819a]">
+                  Modelo seleccionado:{" "}
+                  <strong className="font-semibold text-[#526987]">
+                    {selectedModel?.title.toUpperCase() ?? "SIN MODELO"}
+                  </strong>
+                </p>
+
+                <FormInput label="Número" value={formData.number} onChange={(value) => updateField("number", value)} />
+                <FormInput label="Lugar y fecha" value={formData.date} onChange={(value) => updateField("date", value)} />
+                <FormInput label="Destinatario" value={formData.recipient} onChange={(value) => updateField("recipient", value)} />
+                <FormInput label="Asunto" value={formData.subject} onChange={(value) => updateField("subject", value)} />
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-[#c9dfee] bg-[linear-gradient(145deg,#f2f8ff,#fbfdff)] p-4 shadow-[0_6px_18px_rgba(31,88,151,0.035)]">
+              <div className="flex items-center gap-2">
+                <FileText size={16} className="text-[#075cc5]" />
+                <h4 className="text-[11px] font-bold text-[#173055]">
+                  Campos requeridos para este modelo
+                </h4>
+              </div>
+              <ul className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+                {selectedModel &&
+                  getDraftRequiredFields(selectedModel.fields).map((field) => (
+                    <li
+                      key={field}
+                      className="flex items-start gap-2 text-[10px] leading-4 text-[#526987]"
+                    >
+                      <Check
+                        size={13}
+                        className="mt-0.5 shrink-0 text-[#16844a]"
+                      />
+                      {field}
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          </>
+        )}
       </form>
     </Card>
   );
 }
 
+function ModeButton({
+  active,
+  title,
+  description,
+  onClick,
+}: {
+  active: boolean;
+  title: string;
+  description: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-2xl border p-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0871dc]/25 ${
+        active
+          ? "border-[#0871dc] bg-[#eef6ff] shadow-[0_8px_18px_rgba(8,113,220,0.08)]"
+          : "border-[#d6e3f0] bg-white hover:border-[#a9c8e8] hover:bg-[#f8fbff]"
+      }`}
+    >
+      <span className={`text-[11px] font-bold ${active ? "text-[#075cc5]" : "text-[#18355f]"}`}>
+        {title}
+      </span>
+      <span className="mt-1 block text-[9px] leading-4 text-[#667a97]">
+        {description}
+      </span>
+    </button>
+  );
+}
+
 function DocumentPreview({
+  generationMode,
+  documentType,
   model,
   displayedDocument,
   generatedDocumentText,
@@ -759,7 +920,9 @@ function DocumentPreview({
   onGenerateAI,
   onShowTechnicalPrompt,
 }: {
-  model: DocumentModel;
+  generationMode: GenerationMode;
+  documentType: FreeDocumentType;
+  model?: DocumentModel;
   displayedDocument: string;
   generatedDocumentText: string;
   isGeneratingAI: boolean;
@@ -774,6 +937,16 @@ function DocumentPreview({
     tone: "success" | "error";
     text: string;
   } | null>(null);
+  const previewTitle =
+    generationMode === "free"
+      ? "Redacción libre con IA"
+      : model?.title ?? "Borrador administrativo";
+  const previewType =
+    generationMode === "free"
+      ? documentType === "AUTO"
+        ? "Documento libre - Detectar automáticamente"
+        : `${documentType.toUpperCase()} - Redacción libre`
+      : model?.type ?? "Documento administrativo";
 
   useEffect(() => {
     if (!isGeneratingAI) return;
@@ -800,8 +973,8 @@ function DocumentPreview({
 
     try {
       await exportAdministrativeDocumentToWord({
-        documentTitle: model.title,
-        documentType: model.type,
+        documentTitle: previewTitle,
+        documentType: previewType,
         template: displayedDocument,
         fileName: BORRADOR_WORD_FILE_NAME,
         logoUrl: "/logo-salta.png",
@@ -809,9 +982,9 @@ function DocumentPreview({
       trackActivity({
         eventType: "word_download",
         section: "Generador IA",
-        detail: model.title,
-        documentType: model.type,
-        modelId: model.id,
+        detail: generationMode === "free" ? "Modo libre" : model?.title,
+        documentType: previewType,
+        modelId: generationMode === "model" ? model?.id : undefined,
       });
       setActionMessage({
         tone: "success",
@@ -838,9 +1011,9 @@ function DocumentPreview({
       trackActivity({
         eventType: "copy_text",
         section: "Generador IA",
-        detail: model.title,
-        documentType: model.type,
-        modelId: model.id,
+        detail: generationMode === "free" ? "Modo libre" : model?.title,
+        documentType: previewType,
+        modelId: generationMode === "model" ? model?.id : undefined,
       });
       setActionMessage({
         tone: "success",
@@ -853,9 +1026,9 @@ function DocumentPreview({
         trackActivity({
           eventType: "copy_text",
           section: "Generador IA",
-          detail: model.title,
-          documentType: model.type,
-          modelId: model.id,
+          detail: generationMode === "free" ? "Modo libre" : model?.title,
+          documentType: previewType,
+          modelId: generationMode === "model" ? model?.id : undefined,
         });
         setActionMessage({
           tone: "success",
@@ -878,7 +1051,7 @@ function DocumentPreview({
           <h3 className="text-sm font-bold text-[#173055]">
             Vista previa del documento
           </h3>
-          <p className="mt-1 text-[10px] text-[#71819a]">{model.title}</p>
+          <p className="mt-1 text-[10px] text-[#71819a]">{previewTitle}</p>
         </div>
         <Button className="gap-2" onClick={onShowTechnicalPrompt}>
           <Code2 size={14} />
@@ -888,7 +1061,11 @@ function DocumentPreview({
 
       <div className="relative rounded-2xl border border-[#d8e3ed] bg-[#edf2f7]/70 p-3 shadow-[inset_0_1px_3px_rgba(28,61,99,0.035)]">
         <FormatToolbar />
-        <WordSheet model={model} finalDocument={displayedDocument} />
+        <WordSheet
+          documentType={previewType}
+          documentTitle={previewTitle}
+          finalDocument={displayedDocument}
+        />
         {isGeneratingAI && (
           <div className="absolute inset-3 z-10 flex items-center justify-center rounded-xl bg-[#eef5fc]/88 p-6 text-center backdrop-blur-[2px]">
             <div className="max-w-[310px] rounded-2xl border border-[#bdd5ec] bg-white/95 px-6 py-5 shadow-[0_16px_38px_rgba(27,69,116,0.14)]">
@@ -1029,10 +1206,12 @@ function DocumentPreview({
 }
 
 function WordSheet({
-  model,
+  documentType,
+  documentTitle,
   finalDocument,
 }: {
-  model: DocumentModel;
+  documentType: string;
+  documentTitle: string;
   finalDocument: string;
 }) {
   return (
@@ -1049,10 +1228,10 @@ function WordSheet({
 
       <div className="mt-9 border-b border-[#dce5ef] pb-3">
         <p className="text-[8px] font-bold uppercase tracking-[0.08em] text-[#075cc5]">
-          {model.type}
+          {documentType}
         </p>
         <h4 className="mt-1 text-[9px] font-bold leading-4 text-black">
-          {model.title.toUpperCase()}
+          {documentTitle.toUpperCase()}
         </h4>
       </div>
 

@@ -10,7 +10,6 @@ import { GeneradorIASection } from "@/components/sections/GeneradorIASection";
 import { HomeSection } from "@/components/sections/HomeSection";
 import { ModelosSection } from "@/components/sections/ModelosSection";
 import { trackActivity } from "@/lib/activityClient";
-import { documentModels } from "@/lib/documentModels";
 import { sectionLabels, type SectionId } from "@/lib/navigation";
 
 export function MuniDocApp() {
@@ -43,6 +42,13 @@ export function MuniDocApp() {
     });
   }, [activeSection]);
 
+  const handleSectionChange = (section: SectionId) => {
+    if (section === "generador") {
+      setSelectedModelId(undefined);
+    }
+    setActiveSection(section);
+  };
+
   const handleAdminClick = () => {
     if (isAdminAuthenticated) {
       setActiveSection("actividad");
@@ -58,8 +64,7 @@ export function MuniDocApp() {
   };
 
   const handleCreateNote = () => {
-    const firstNote = documentModels.find((model) => model.type === "Nota");
-    setSelectedModelId(firstNote?.id);
+    setSelectedModelId(undefined);
     setActiveSection("generador");
   };
 
@@ -72,12 +77,12 @@ export function MuniDocApp() {
     <>
       <AppShell
         activeSection={activeSection}
-        onSectionChange={setActiveSection}
+        onSectionChange={handleSectionChange}
         onAdminClick={handleAdminClick}
       >
         {activeSection === "inicio" && (
           <HomeSection
-            onNavigate={setActiveSection}
+            onNavigate={handleSectionChange}
             onCreateNote={handleCreateNote}
             onShowAbout={handleShowAbout}
           />
@@ -85,7 +90,7 @@ export function MuniDocApp() {
         {activeSection === "biblioteca" && <BibliotecaSection />}
         {activeSection === "modelos" && (
           <ModelosSection
-            onNavigate={setActiveSection}
+            onNavigate={handleSectionChange}
             onUseModel={handleUseModel}
           />
         )}
@@ -94,7 +99,7 @@ export function MuniDocApp() {
         )}
         {activeSection === "ayuda" && (
           <AyudaSection
-            onNavigate={setActiveSection}
+            onNavigate={handleSectionChange}
             aboutFocusToken={aboutFocusToken}
           />
         )}

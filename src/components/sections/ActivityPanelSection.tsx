@@ -55,6 +55,7 @@ const eventLabels: Record<string, string> = {
   draft_generate_start: "Inició generación de borrador",
   draft_generate_success: "Generó borrador con IA",
   draft_generate_error: "Error al generar borrador",
+  generation_mode_selected: "Seleccionó modo de generación",
   word_download: "Descargó Word",
   copy_text: "Copió texto",
   manual_download_pdf: "Intentó descargar manual PDF",

@@ -1,5 +1,8 @@
 import type { DocumentModel, DocumentType } from "@/lib/documentModels";
 
+export type GenerationMode = "free" | "model";
+export type FreeDocumentType = DocumentType | "AUTO";
+
 export type AdministrativeFormData = {
   number: string;
   date: string;
@@ -63,6 +66,74 @@ ${userPrompt.trim() || "[SIN INDICACIONES ADICIONALES]"}
 
 REGLAS DE REDACCIÓN Y FORMATO:
 ${formattingRules.map((rule) => `- ${rule}`).join("\n")}`;
+}
+
+export function createEmptyFormData(): AdministrativeFormData {
+  return {
+    number: "",
+    date: "",
+    recipient: "",
+    subject: "",
+  };
+}
+
+export function buildFreeProvisionalDocument({
+  documentType,
+  formData,
+  userPrompt,
+}: {
+  documentType: FreeDocumentType;
+  formData: AdministrativeFormData;
+  userPrompt: string;
+}) {
+  const instructions = userPrompt.trim();
+  const typeLabel =
+    documentType === "AUTO" ? "DOCUMENTO ADMINISTRATIVO" : documentType.toUpperCase();
+
+  if (!instructions) {
+    return `Completá los campos principales y generá un borrador para visualizarlo en esta sección.`;
+  }
+
+  const lines = [
+    formData.date || "SALTA, [FECHA]",
+    "",
+    `${typeLabel} - BORRADOR DESDE CERO`,
+    formData.number ? `Nº ${formData.number}` : "",
+    formData.recipient ? `Destinatario: ${formData.recipient}` : "Destinatario: [DESTINATARIO]",
+    formData.subject ? `Asunto: ${formData.subject}` : "Asunto: [ASUNTO]",
+    "",
+    "Indicaciones cargadas por el agente municipal:",
+    instructions,
+    "",
+    "Al generar con IA, MuniDoc redactará el documento administrativo completo respetando estos datos y dejando entre corchetes la información faltante.",
+  ];
+
+  return lines.filter((line, index) => line || lines[index - 1]).join("\n");
+}
+
+export function buildFreeAIPromptPreview({
+  documentType,
+  formData,
+  userPrompt,
+}: {
+  documentType: FreeDocumentType;
+  formData: AdministrativeFormData;
+  userPrompt: string;
+}) {
+  return `Sos un asistente especializado en redacción administrativa municipal para MuniDoc Salta.
+
+El usuario está redactando un documento desde cero. No uses ningún modelo preexistente de la plataforma. No copies estructuras cargadas anteriormente. Interpretá exclusivamente las indicaciones del usuario y, si se proporcionan, los datos opcionales del formulario.
+
+Tipo indicado por el usuario: ${
+    documentType === "AUTO" ? "Detectar automáticamente" : documentType.toUpperCase()
+  }
+Número: ${formData.number || "[NÚMERO]"}
+Lugar y fecha: ${formData.date || "[LUGAR Y FECHA]"}
+Destinatario: ${formData.recipient || "[DESTINATARIO]"}
+Asunto: ${formData.subject || "Generar asunto formal según el pedido"}
+
+Indicaciones libres del usuario:
+${userPrompt.trim() || "[SIN INDICACIONES]"}`;
 }
 
 export function buildProvisionalDocument({

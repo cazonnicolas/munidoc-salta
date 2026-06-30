@@ -9,6 +9,7 @@ const allowedEvents = new Set([
   "draft_generate_start",
   "draft_generate_success",
   "draft_generate_error",
+  "generation_mode_selected",
   "word_download",
   "copy_text",
   "manual_download_pdf",
