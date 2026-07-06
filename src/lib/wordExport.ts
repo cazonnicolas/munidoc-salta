@@ -143,7 +143,7 @@ function createHeader({
                               type: "jpg",
                               data: escudo,
                               transformation: {
-                                width: 86,
+                                width: 100,
                                 height: 98,
                               },
                               altText: {
