@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlignCenter,
@@ -25,7 +26,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { InstitutionalLogo } from "@/components/ui/InstitutionalLogo";
 import { trackActivity } from "@/lib/activityClient";
 import {
   documentModels as defaultDocumentModels,
@@ -47,6 +47,11 @@ import {
   BORRADOR_WORD_FILE_NAME,
   exportAdministrativeDocumentToWord,
 } from "@/lib/wordExport";
+import {
+  formatOfficialDate,
+  OFFICIAL_DOCUMENT_TEMPLATE,
+  sanitizeGeneratedDocumentText,
+} from "@/lib/officialDocumentTemplate";
 
 const documentTypes: DocumentType[] = [
   "Nota",
@@ -482,8 +487,10 @@ export function GeneradorIASection({
     }
   };
 
-  const displayedDocument =
-    generatedDocumentText.trim() || provisionalDocument;
+  const displayedDocument = sanitizeGeneratedDocumentText(
+    generatedDocumentText.trim() || provisionalDocument,
+  );
+  const officialDate = formatOfficialDate(formData.date);
 
   if (generationMode === "model" && !selectedModel) {
     return (
@@ -552,6 +559,7 @@ export function GeneradorIASection({
           documentType={generationMode === "free" ? freeDocumentType : selectedModel?.type ?? "Nota"}
           model={selectedModel}
           displayedDocument={displayedDocument}
+          officialDate={officialDate}
           generatedDocumentText={generatedDocumentText}
           isGeneratingAI={isGeneratingAI}
           aiError={aiError}
@@ -913,6 +921,7 @@ function DocumentPreview({
   documentType,
   model,
   displayedDocument,
+  officialDate,
   generatedDocumentText,
   isGeneratingAI,
   aiError,
@@ -924,6 +933,7 @@ function DocumentPreview({
   documentType: FreeDocumentType;
   model?: DocumentModel;
   displayedDocument: string;
+  officialDate: string;
   generatedDocumentText: string;
   isGeneratingAI: boolean;
   aiError: string;
@@ -976,8 +986,8 @@ function DocumentPreview({
         documentTitle: previewTitle,
         documentType: previewType,
         template: displayedDocument,
+        placeAndDate: officialDate,
         fileName: BORRADOR_WORD_FILE_NAME,
-        logoUrl: "/logo-salta.png",
       });
       trackActivity({
         eventType: "word_download",
@@ -1062,8 +1072,7 @@ function DocumentPreview({
       <div className="relative rounded-2xl border border-[#d8e3ed] bg-[#edf2f7]/70 p-3 shadow-[inset_0_1px_3px_rgba(28,61,99,0.035)]">
         <FormatToolbar />
         <WordSheet
-          documentType={previewType}
-          documentTitle={previewTitle}
+          officialDate={officialDate}
           finalDocument={displayedDocument}
         />
         {isGeneratingAI && (
@@ -1206,42 +1215,61 @@ function DocumentPreview({
 }
 
 function WordSheet({
-  documentType,
-  documentTitle,
+  officialDate,
   finalDocument,
 }: {
-  documentType: string;
-  documentTitle: string;
+  officialDate: string;
   finalDocument: string;
 }) {
   return (
     <div className="munidoc-word-sheet document-paper relative mx-auto min-h-[690px] max-w-[520px] overflow-hidden border border-[#becbd8] bg-white px-8 pb-24 pt-8 shadow-[0_18px_42px_rgba(20,48,82,0.16),0_2px_5px_rgba(20,48,82,0.08)] sm:px-10">
       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#0b68c8] via-[#77b2e8] to-transparent opacity-75" />
-      <div className="pointer-events-none absolute right-6 top-5 grid grid-cols-3 gap-1.5 opacity-[0.12]">
-        {Array.from({ length: 9 }).map((_, index) => (
-          <span key={index} className="size-1 rounded-full bg-[#1d68b7]" />
-        ))}
-      </div>
-      <div className="flex items-start">
-        <InstitutionalLogo className="w-[132px]" />
+      <div className="grid grid-cols-[60px_145px_minmax(130px,1fr)] items-center gap-x-2 border-b border-[#dce5ef] pb-3">
+        <div className="relative h-[67px] w-[60px] overflow-hidden">
+          <Image
+            src={OFFICIAL_DOCUMENT_TEMPLATE.escudoPath}
+            alt="Escudo institucional del Departamento Ejecutivo"
+            fill
+            sizes="60px"
+            className="object-contain object-left-top"
+          />
+        </div>
+        <div className="flex h-[58px] flex-col justify-center text-left">
+          <p className="text-[7.2px] font-bold uppercase tracking-[0.105em] text-[#344d6e]">
+            {OFFICIAL_DOCUMENT_TEMPLATE.municipalityTitle}
+          </p>
+          <p className="mt-0.5 text-[7.2px] font-bold uppercase tracking-[0.105em] text-[#344d6e]">
+            {OFFICIAL_DOCUMENT_TEMPLATE.executiveTitle}
+          </p>
+        </div>
+        <div className="flex h-[58px] flex-col items-end justify-center gap-1 text-right">
+          <p className="max-w-[165px] text-[6.3px] italic leading-[1.15] text-[#8a95a3]">
+            {OFFICIAL_DOCUMENT_TEMPLATE.motto}
+          </p>
+          <div className="relative h-[36px] w-[122px]">
+            <Image
+              src={OFFICIAL_DOCUMENT_TEMPLATE.logoPath}
+              alt="Logo Salta Municipalidad"
+              fill
+              sizes="122px"
+              className="object-contain object-right"
+            />
+          </div>
+        </div>
       </div>
 
-      <div className="mt-9 border-b border-[#dce5ef] pb-3">
-        <p className="text-[8px] font-bold uppercase tracking-[0.08em] text-[#075cc5]">
-          {documentType}
+      <div className="mt-6 text-right">
+        <p className="font-['Arial_Narrow',Arial,sans-serif] text-[9px] font-bold text-black">
+          {officialDate}
         </p>
-        <h4 className="mt-1 text-[9px] font-bold leading-4 text-black">
-          {documentTitle.toUpperCase()}
-        </h4>
       </div>
 
-      <pre className="mt-6 whitespace-pre-wrap font-['Arial_Narrow',Arial,sans-serif] text-[9px] leading-[1.72] text-black">
+      <pre className="mt-7 whitespace-pre-wrap font-['Arial_Narrow',Arial,sans-serif] text-[9px] leading-[1.72] text-black">
         {finalDocument}
       </pre>
 
       <div className="absolute inset-x-8 bottom-6 border-t border-[#8db6df]/70 pt-2 text-center text-[7px] leading-3 text-[#7890a9] sm:inset-x-10">
-        <p className="font-semibold text-[#607c9a]">Municipalidad de Salta</p>
-        <p>Documento generado desde MuniDoc Salta</p>
+        <p>{OFFICIAL_DOCUMENT_TEMPLATE.footerText}</p>
       </div>
     </div>
   );

@@ -18,6 +18,8 @@ type GenerateDocumentRequest = {
 
 const STRICT_INSTRUCTIONS = `Redactá únicamente el documento administrativo solicitado para la Municipalidad de Salta. Usá lenguaje formal, claro, preciso y conciso. No inventes expedientes, fechas, normas, artículos, nombres, cargos ni destinatarios; si falta información, dejala entre corchetes. No uses Markdown, nombres ficticios, explicaciones externas ni frases como "claro" o "aquí tiene". Entregá texto listo para revisar y exportar a Word.`;
 
+const OFFICIAL_FORMAT_INSTRUCTION = `No incluyas encabezado institucional, logos, fecha al inicio ni pie de página. El sistema agregará automáticamente el encabezado oficial, la fecha y el pie institucional. Empezá directamente con el bloque administrativo del documento, por ejemplo destinatario, asunto, cuerpo, cierre y firma si corresponde.`;
+
 const MODELS = ["gemini-2.5-flash-lite", "gemini-2.5-flash"] as const;
 
 const normalizeText = (value: unknown) =>
@@ -40,6 +42,8 @@ function buildFreePrompt(body: GenerateDocumentRequest, userInstructions: string
     documentType === "AUTO" ? "Detectar automáticamente" : documentType;
 
   return `${STRICT_INSTRUCTIONS}
+
+${OFFICIAL_FORMAT_INSTRUCTION}
 
 Sos un asistente especializado en redacción administrativa municipal para MuniDoc Salta.
 
@@ -73,6 +77,8 @@ ${userInstructions}`;
 
 function buildModelPrompt(body: GenerateDocumentRequest, userInstructions: string) {
   return `${STRICT_INSTRUCTIONS}
+
+${OFFICIAL_FORMAT_INSTRUCTION}
 
 Sos un asistente especializado en redacción administrativa municipal de la Municipalidad de Salta.
 

@@ -1,20 +1,32 @@
 import {
   AlignmentType,
+  BorderStyle,
   Document,
   Footer,
   Header,
   ImageRun,
   Packer,
   Paragraph,
+  Table,
+  TableCell,
+  TableRow,
   TextRun,
+  VerticalAlign,
+  WidthType,
 } from "docx";
 import { saveAs } from "file-saver";
+import {
+  formatOfficialDate,
+  OFFICIAL_DOCUMENT_TEMPLATE,
+  sanitizeGeneratedDocumentText,
+} from "@/lib/officialDocumentTemplate";
 
 export type AdministrativeWordExportOptions = {
   documentTitle: string;
   documentType: string;
   template: string;
   fileName: string;
+  placeAndDate?: string;
   logoUrl?: string;
 };
 
@@ -29,9 +41,15 @@ export async function exportAdministrativeDocumentToWord({
   documentType,
   template,
   fileName,
-  logoUrl = "/logo-salta.png",
+  placeAndDate,
+  logoUrl = OFFICIAL_DOCUMENT_TEMPLATE.logoPath,
 }: AdministrativeWordExportOptions) {
-  const logo = await loadLogo(logoUrl);
+  const [escudo, logo] = await Promise.all([
+    loadImage(OFFICIAL_DOCUMENT_TEMPLATE.escudoPath),
+    loadImage(logoUrl),
+  ]);
+  const officialDate = formatOfficialDate(placeAndDate);
+  const cleanTemplate = sanitizeGeneratedDocumentText(template);
   const document = new Document({
     creator: "MuniDoc Salta",
     title: documentTitle,
@@ -56,18 +74,18 @@ export async function exportAdministrativeDocumentToWord({
           },
         },
         headers: {
-          default: createHeader(logo),
+          default: createHeader({ escudo, logo }),
         },
         footers: {
           default: createFooter(),
         },
         children: [
           new Paragraph({
-            alignment: AlignmentType.LEFT,
-            spacing: { after: 120 },
+            alignment: AlignmentType.RIGHT,
+            spacing: { before: 260, after: 320 },
             children: [
               new TextRun({
-                text: `${documentType.toUpperCase()} - ${documentTitle}`,
+                text: officialDate,
                 bold: true,
                 font: FONT_FAMILY,
                 size: FONT_SIZE,
@@ -75,7 +93,7 @@ export async function exportAdministrativeDocumentToWord({
               }),
             ],
           }),
-          ...createTemplateParagraphs(template),
+          ...createTemplateParagraphs(cleanTemplate),
         ],
       },
     ],
@@ -85,34 +103,151 @@ export async function exportAdministrativeDocumentToWord({
   saveAs(blob, ensureDocxExtension(fileName));
 }
 
-function createHeader(logo?: ArrayBuffer) {
-  const children: Paragraph[] = [];
+function createHeader({
+  escudo,
+  logo,
+}: {
+  escudo?: ArrayBuffer;
+  logo?: ArrayBuffer;
+}) {
+  const emptyBorders = {
+    top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+    bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+    left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+    right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+    insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+    insideVertical: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+  };
 
-  if (logo) {
-    children.push(
-      new Paragraph({
-        alignment: AlignmentType.LEFT,
-        spacing: { after: 0 },
-        children: [
-          new ImageRun({
-            type: "png",
-            data: logo,
-            transformation: {
-              width: 145,
-              height: 62,
-            },
-            altText: {
-              title: "Municipalidad de Salta",
-              description: "Logo institucional de la Municipalidad de Salta",
-              name: "Logo Municipalidad de Salta",
-            },
+  return new Header({
+    children: [
+      new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        borders: emptyBorders,
+        rows: [
+          new TableRow({
+            children: [
+              new TableCell({
+                width: { size: 13, type: WidthType.PERCENTAGE },
+                borders: emptyBorders,
+                verticalAlign: VerticalAlign.CENTER,
+                children: [
+                  new Paragraph({
+                    alignment: AlignmentType.LEFT,
+                    spacing: { after: 0 },
+                    children: [
+                      ...(escudo
+                        ? [
+                            new ImageRun({
+                              type: "jpg",
+                              data: escudo,
+                              transformation: {
+                                width: 62,
+                                height: 78,
+                              },
+                              altText: {
+                                title: "Departamento Ejecutivo",
+                                description:
+                                  "Escudo institucional del Departamento Ejecutivo",
+                                name: "Escudo Departamento Ejecutivo",
+                              },
+                            }),
+                          ]
+                        : []),
+                    ],
+                  }),
+                ],
+              }),
+              new TableCell({
+                width: { size: 31, type: WidthType.PERCENTAGE },
+                borders: emptyBorders,
+                verticalAlign: VerticalAlign.CENTER,
+                children: [
+                  new Paragraph({
+                    alignment: AlignmentType.LEFT,
+                    spacing: { after: 10 },
+                    children: [
+                      new TextRun({
+                        text: OFFICIAL_DOCUMENT_TEMPLATE.municipalityTitle,
+                        bold: true,
+                        font: FONT_FAMILY,
+                        size: 17,
+                        color: "2E4057",
+                      }),
+                    ],
+                  }),
+                  new Paragraph({
+                    alignment: AlignmentType.LEFT,
+                    spacing: { after: 0 },
+                    children: [
+                      new TextRun({
+                        text: OFFICIAL_DOCUMENT_TEMPLATE.executiveTitle,
+                        bold: true,
+                        font: FONT_FAMILY,
+                        size: 17,
+                        color: "2E4057",
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+              new TableCell({
+                width: { size: 56, type: WidthType.PERCENTAGE },
+                borders: emptyBorders,
+                verticalAlign: VerticalAlign.CENTER,
+                children: [
+                  new Paragraph({
+                    alignment: AlignmentType.RIGHT,
+                    spacing: { after: 35 },
+                    children: [
+                      new TextRun({
+                        text: OFFICIAL_DOCUMENT_TEMPLATE.motto,
+                        italics: true,
+                        font: FONT_FAMILY,
+                        size: 14,
+                        color: "7C8794",
+                      }),
+                    ],
+                  }),
+                  new Paragraph({
+                    alignment: AlignmentType.RIGHT,
+                    children: [
+                      ...(logo
+                        ? [
+                            new ImageRun({
+                              type: "png",
+                              data: logo,
+                              transformation: {
+                                width: 142,
+                                height: 60,
+                              },
+                              altText: {
+                                title: "Salta Municipalidad",
+                                description:
+                                  "Logo institucional de la Municipalidad de Salta",
+                                name: "Logo Salta Municipalidad",
+                              },
+                            }),
+                          ]
+                        : [
+                            new TextRun({
+                              text: OFFICIAL_DOCUMENT_TEMPLATE.municipalityTitle,
+                              bold: true,
+                              font: FONT_FAMILY,
+                              size: 17,
+                              color: "2E4057",
+                            }),
+                          ]),
+                    ],
+                  }),
+                ],
+              }),
+            ],
           }),
         ],
       }),
-    );
-  }
-
-  return new Header({ children });
+    ],
+  });
 }
 
 function createFooter() {
@@ -123,11 +258,10 @@ function createFooter() {
         spacing: { after: 20 },
         children: [
           new TextRun({
-            text: "Municipalidad de Salta",
-            bold: true,
+            text: OFFICIAL_DOCUMENT_TEMPLATE.footerText,
             font: FONT_FAMILY,
             size: 17,
-            color: "7890A9",
+            color: "7A7A7A",
           }),
         ],
       }),
@@ -168,13 +302,13 @@ function createTemplateParagraph(line: string) {
   });
 }
 
-async function loadLogo(logoUrl: string) {
+async function loadImage(imageUrl: string) {
   try {
-    const response = await fetch(logoUrl);
+    const response = await fetch(imageUrl);
     if (!response.ok) return undefined;
     return await response.arrayBuffer();
   } catch (error) {
-    console.warn("No se pudo cargar el logo para el documento Word.", error);
+    console.warn("No se pudo cargar una imagen para el documento Word.", error);
     return undefined;
   }
 }
