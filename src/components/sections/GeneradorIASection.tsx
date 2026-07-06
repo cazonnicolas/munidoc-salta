@@ -1224,26 +1224,28 @@ function WordSheet({
   return (
     <div className="munidoc-word-sheet document-paper relative mx-auto min-h-[690px] max-w-[520px] overflow-hidden border border-[#becbd8] bg-white px-8 pb-24 pt-8 shadow-[0_18px_42px_rgba(20,48,82,0.16),0_2px_5px_rgba(20,48,82,0.08)] sm:px-10">
       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#0b68c8] via-[#77b2e8] to-transparent opacity-75" />
-      <div className="grid grid-cols-[60px_145px_minmax(130px,1fr)] items-center gap-x-2 border-b border-[#dce5ef] pb-3">
-        <div className="relative h-[67px] w-[60px] overflow-hidden">
-          <Image
-            src={OFFICIAL_DOCUMENT_TEMPLATE.escudoPath}
-            alt="Escudo institucional del Departamento Ejecutivo"
-            fill
-            sizes="60px"
-            className="object-contain object-left-top"
-          />
+      <div className="grid grid-cols-[170px_minmax(150px,1fr)] items-start gap-x-5 border-b border-[#dce5ef] pb-3">
+        <div className="flex flex-col items-start">
+          <div className="relative h-[84px] w-[76px] overflow-hidden">
+            <Image
+              src={OFFICIAL_DOCUMENT_TEMPLATE.escudoPath}
+              alt="Escudo institucional del Departamento Ejecutivo"
+              fill
+              sizes="76px"
+              className="object-contain object-left-top"
+            />
+          </div>
+          <div className="mt-1.5 font-['Times_New_Roman',Times,serif]">
+            <p className="text-[8px] font-bold uppercase leading-[1.12] tracking-[0.08em] text-[#2e4057]">
+              {OFFICIAL_DOCUMENT_TEMPLATE.municipalityTitle}
+            </p>
+            <p className="mt-0.5 text-[8px] font-bold uppercase leading-[1.12] tracking-[0.08em] text-[#2e4057]">
+              {OFFICIAL_DOCUMENT_TEMPLATE.executiveTitle}
+            </p>
+          </div>
         </div>
-        <div className="flex h-[58px] flex-col justify-center text-left">
-          <p className="text-[7.2px] font-bold uppercase tracking-[0.105em] text-[#344d6e]">
-            {OFFICIAL_DOCUMENT_TEMPLATE.municipalityTitle}
-          </p>
-          <p className="mt-0.5 text-[7.2px] font-bold uppercase tracking-[0.105em] text-[#344d6e]">
-            {OFFICIAL_DOCUMENT_TEMPLATE.executiveTitle}
-          </p>
-        </div>
-        <div className="flex h-[58px] flex-col items-end justify-center gap-1 text-right">
-          <p className="max-w-[165px] text-[6.3px] italic leading-[1.15] text-[#8a95a3]">
+        <div className="flex flex-col items-end gap-1.5 pt-1 text-right font-['Times_New_Roman',Times,serif]">
+          <p className="max-w-[210px] text-[7px] italic leading-[1.15] text-[#8a95a3]">
             {OFFICIAL_DOCUMENT_TEMPLATE.motto}
           </p>
           <div className="relative h-[36px] w-[122px]">
@@ -1269,7 +1271,9 @@ function WordSheet({
       </pre>
 
       <div className="absolute inset-x-8 bottom-6 border-t border-[#8db6df]/70 pt-2 text-center text-[7px] leading-3 text-[#7890a9] sm:inset-x-10">
-        <p>{OFFICIAL_DOCUMENT_TEMPLATE.footerText}</p>
+        <p className="font-['Times_New_Roman',Times,serif]">
+          {OFFICIAL_DOCUMENT_TEMPLATE.footerText}
+        </p>
       </div>
     </div>
   );

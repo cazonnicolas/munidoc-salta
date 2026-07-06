@@ -33,6 +33,7 @@ export type AdministrativeWordExportOptions = {
 export const cmToTwip = (cm: number) => Math.round(cm * 567);
 
 const FONT_FAMILY = "Arial Narrow";
+const HEADER_FONT_FAMILY = "Times New Roman";
 const FONT_SIZE = 24;
 export const BORRADOR_WORD_FILE_NAME = "BORRADOR-MuniDoc.docx";
 
@@ -128,13 +129,13 @@ function createHeader({
           new TableRow({
             children: [
               new TableCell({
-                width: { size: 13, type: WidthType.PERCENTAGE },
+                width: { size: 36, type: WidthType.PERCENTAGE },
                 borders: emptyBorders,
-                verticalAlign: VerticalAlign.CENTER,
+                verticalAlign: VerticalAlign.TOP,
                 children: [
                   new Paragraph({
                     alignment: AlignmentType.LEFT,
-                    spacing: { after: 0 },
+                    spacing: { after: 55 },
                     children: [
                       ...(escudo
                         ? [
@@ -142,8 +143,8 @@ function createHeader({
                               type: "jpg",
                               data: escudo,
                               transformation: {
-                                width: 62,
-                                height: 78,
+                                width: 86,
+                                height: 98,
                               },
                               altText: {
                                 title: "Departamento Ejecutivo",
@@ -156,22 +157,15 @@ function createHeader({
                         : []),
                     ],
                   }),
-                ],
-              }),
-              new TableCell({
-                width: { size: 31, type: WidthType.PERCENTAGE },
-                borders: emptyBorders,
-                verticalAlign: VerticalAlign.CENTER,
-                children: [
                   new Paragraph({
                     alignment: AlignmentType.LEFT,
-                    spacing: { after: 10 },
+                    spacing: { after: 4 },
                     children: [
                       new TextRun({
                         text: OFFICIAL_DOCUMENT_TEMPLATE.municipalityTitle,
                         bold: true,
-                        font: FONT_FAMILY,
-                        size: 17,
+                        font: HEADER_FONT_FAMILY,
+                        size: 18,
                         color: "2E4057",
                       }),
                     ],
@@ -183,8 +177,8 @@ function createHeader({
                       new TextRun({
                         text: OFFICIAL_DOCUMENT_TEMPLATE.executiveTitle,
                         bold: true,
-                        font: FONT_FAMILY,
-                        size: 17,
+                        font: HEADER_FONT_FAMILY,
+                        size: 18,
                         color: "2E4057",
                       }),
                     ],
@@ -192,19 +186,19 @@ function createHeader({
                 ],
               }),
               new TableCell({
-                width: { size: 56, type: WidthType.PERCENTAGE },
+                width: { size: 64, type: WidthType.PERCENTAGE },
                 borders: emptyBorders,
-                verticalAlign: VerticalAlign.CENTER,
+                verticalAlign: VerticalAlign.TOP,
                 children: [
                   new Paragraph({
                     alignment: AlignmentType.RIGHT,
-                    spacing: { after: 35 },
+                    spacing: { after: 32 },
                     children: [
                       new TextRun({
                         text: OFFICIAL_DOCUMENT_TEMPLATE.motto,
                         italics: true,
-                        font: FONT_FAMILY,
-                        size: 14,
+                        font: HEADER_FONT_FAMILY,
+                        size: 15,
                         color: "7C8794",
                       }),
                     ],
@@ -233,7 +227,7 @@ function createHeader({
                             new TextRun({
                               text: OFFICIAL_DOCUMENT_TEMPLATE.municipalityTitle,
                               bold: true,
-                              font: FONT_FAMILY,
+                              font: HEADER_FONT_FAMILY,
                               size: 17,
                               color: "2E4057",
                             }),
@@ -259,7 +253,7 @@ function createFooter() {
         children: [
           new TextRun({
             text: OFFICIAL_DOCUMENT_TEMPLATE.footerText,
-            font: FONT_FAMILY,
+            font: HEADER_FONT_FAMILY,
             size: 17,
             color: "7A7A7A",
           }),
